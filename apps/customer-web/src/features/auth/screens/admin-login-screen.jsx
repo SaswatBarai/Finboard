@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api, getApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { getAuthErrorMessage } from "../lib/auth-errors";
 import { useAuth } from "../context/auth-context";
 
 export default function AdminLoginPage() {
@@ -31,7 +32,7 @@ export default function AdminLoginPage() {
       toast.success("Admin signed in");
       router.push(response.data.user.role === "amc_admin" ? "/admin/amc" : "/admin/dashboard");
     } catch (error) {
-      toast.error(getApiError(error));
+      toast.error(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }

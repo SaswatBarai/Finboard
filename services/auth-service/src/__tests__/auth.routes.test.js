@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import crypto from "crypto";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import request from "supertest";
@@ -9,7 +10,6 @@ process.env.JWT_EXPIRES_IN = "1h";
 process.env.NODE_ENV = "development";
 process.env.BCRYPT_SALT_ROUNDS = "1";
 process.env.INTERNAL_SERVICE_KEY = "dev-internal-key";
-process.env.TWILIO_DEV_OTP = "111111";
 
 import { registerLocalProfileHandler } from "@finboard/contracts";
 import { buildApp } from "../app.js";
@@ -23,13 +23,14 @@ registerLocalProfileHandler({
 });
 registerAuthHandlers();
 
-const DEV_OTP = "111111";
 const TEST_PHONE = "+919876543210";
 const TEST_EMAIL = "user@test.com";
 const TEST_PASSWORD = "Password@123";
+const TEST_OTP = "482917";
 
 let mongod;
 let app;
+let randomIntSpy;
 
 beforeAll(async () => {
   mongod = await MongoMemoryServer.create();
@@ -44,6 +45,11 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await User.deleteMany({});
+  randomIntSpy = jest.spyOn(crypto, "randomInt").mockReturnValue(Number(TEST_OTP));
+});
+
+afterEach(() => {
+  randomIntSpy?.mockRestore();
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,17 +72,58 @@ function bearerToken(user) {
   return `Bearer ${signJwt(user)}`;
 }
 
+async function sendPhoneOtp(phone) {
+  const res = await request(app).post("/api/auth/send-otp").send({ phone });
+  expect(res.status).toBe(200);
+  expect(res.body.devOtp).toBeUndefined();
+  return TEST_OTP;
+}
+
+async function requestPasswordResetOtp(email) {
+  const res = await request(app).post("/api/auth/forgot-password").send({ email });
+  expect(res.status).toBe(200);
+  expect(res.body.devOtp).toBeUndefined();
+  return TEST_OTP;
+}
+
 // ── POST /api/auth/send-otp ───────────────────────────────────────────────────
 
 describe("POST /api/auth/send-otp", () => {
-  it("returns devOtp in development mode", async () => {
+  it("does not return OTP in the response body", async () => {
+    await createUser();
+
     const res = await request(app)
       .post("/api/auth/send-otp")
       .send({ phone: TEST_PHONE });
 
     expect(res.status).toBe(200);
     expect(res.body.provider).toBe("development");
-    expect(res.body.devOtp).toBe(DEV_OTP);
+    expect(res.body.devOtp).toBeUndefined();
+  });
+
+  it("allows resend for pending signup users", async () => {
+    await request(app).post("/api/auth/signup").send({
+      name: "Pending User",
+      email: "pending@test.com",
+      phone: "+919000000099",
+      password: TEST_PASSWORD
+    });
+
+    const res = await request(app)
+      .post("/api/auth/send-otp")
+      .send({ phone: "+919000000099" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.devOtp).toBeUndefined();
+  });
+
+  it("returns 404 for unregistered phone numbers", async () => {
+    const res = await request(app)
+      .post("/api/auth/send-otp")
+      .send({ phone: TEST_PHONE });
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/registered/i);
   });
 
   it("rejects invalid phone format", async () => {
@@ -92,17 +139,19 @@ describe("POST /api/auth/send-otp", () => {
 
 describe("POST /api/auth/verify-otp", () => {
   it("returns approved:true with devOtp after send-otp", async () => {
-    await request(app).post("/api/auth/send-otp").send({ phone: TEST_PHONE });
+    await createUser();
+    const otp = await sendPhoneOtp(TEST_PHONE);
 
     const res = await request(app)
       .post("/api/auth/verify-otp")
-      .send({ phone: TEST_PHONE, otp: DEV_OTP });
+      .send({ phone: TEST_PHONE, otp });
 
     expect(res.status).toBe(200);
     expect(res.body.approved).toBe(true);
   });
 
   it("returns approved:false with wrong OTP", async () => {
+    await createUser();
     await request(app).post("/api/auth/send-otp").send({ phone: TEST_PHONE });
 
     const res = await request(app)
@@ -131,11 +180,11 @@ describe("POST /api/auth/signup", () => {
     expect(res.body.token).toBeUndefined();
     expect(res.body.user.email).toBe(TEST_EMAIL);
     expect(res.body.user.phoneVerified).toBe(false);
-    expect(res.body.otp.devOtp).toBe(DEV_OTP);
+    expect(res.body.otp).toBeUndefined();
 
     const verifyRes = await request(app)
       .post("/api/auth/verify-otp")
-      .send({ phone: TEST_PHONE, otp: DEV_OTP });
+      .send({ phone: TEST_PHONE, otp: TEST_OTP });
 
     expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.registrationComplete).toBe(true);
@@ -183,6 +232,22 @@ describe("POST /api/auth/signup", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("blocks phone-login until phone is verified", async () => {
+    await request(app).post("/api/auth/signup").send({
+      name: "Pending User",
+      email: "pending-phone@test.com",
+      phone: "+919000000088",
+      password: TEST_PASSWORD
+    });
+
+    const res = await request(app)
+      .post("/api/auth/phone-login")
+      .send({ phone: "+919000000088", otp: "123456" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/verification/i);
+  });
 });
 
 // ── POST /api/auth/signin ─────────────────────────────────────────────────────
@@ -214,6 +279,43 @@ describe("POST /api/auth/signin", () => {
     const res = await request(app)
       .post("/api/auth/signin")
       .send({ email: "nobody@test.com", password: TEST_PASSWORD });
+
+    expect(res.status).toBe(401);
+  });
+});
+
+// ── POST /api/auth/phone-login ───────────────────────────────────────────────
+
+describe("POST /api/auth/phone-login", () => {
+  it("returns token for a registered verified user", async () => {
+    await createUser();
+    const otp = await sendPhoneOtp(TEST_PHONE);
+
+    const res = await request(app)
+      .post("/api/auth/phone-login")
+      .send({ phone: TEST_PHONE, otp });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
+    expect(res.body.user.phone).toBe(TEST_PHONE);
+  });
+
+  it("returns 404 for unregistered phone numbers", async () => {
+    const res = await request(app)
+      .post("/api/auth/phone-login")
+      .send({ phone: "+919111111111", otp: "123456" });
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/registered/i);
+  });
+
+  it("returns 401 for invalid OTP", async () => {
+    await createUser();
+    await request(app).post("/api/auth/send-otp").send({ phone: TEST_PHONE });
+
+    const res = await request(app)
+      .post("/api/auth/phone-login")
+      .send({ phone: TEST_PHONE, otp: "000000" });
 
     expect(res.status).toBe(401);
   });
@@ -333,7 +435,7 @@ describe("PATCH /api/auth/change-password", () => {
 // ── POST /api/auth/forgot-password ───────────────────────────────────────────
 
 describe("POST /api/auth/forgot-password", () => {
-  it("returns 200 and devOtp when account exists in dev mode", async () => {
+  it("returns 200 without OTP in the response when account exists", async () => {
     await createUser();
 
     const res = await request(app)
@@ -342,10 +444,10 @@ describe("POST /api/auth/forgot-password", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.message).toContain("reset code");
-    expect(res.body.devOtp).toBe(DEV_OTP);
+    expect(res.body.devOtp).toBeUndefined();
   });
 
-  it("returns 200 but no devOtp when account does not exist", async () => {
+  it("returns 200 without OTP when account does not exist", async () => {
     const res = await request(app)
       .post("/api/auth/forgot-password")
       .send({ email: "nobody@test.com" });
@@ -369,11 +471,11 @@ describe("POST /api/auth/reset-password", () => {
   it("resets password and allows login with new password", async () => {
     await createUser();
 
-    await request(app).post("/api/auth/forgot-password").send({ email: TEST_EMAIL });
+    const resetOtp = await requestPasswordResetOtp(TEST_EMAIL);
 
     const resetRes = await request(app).post("/api/auth/reset-password").send({
       email: TEST_EMAIL,
-      otp: DEV_OTP,
+      otp: resetOtp,
       newPassword: "ResetPass@789"
     });
     expect(resetRes.status).toBe(200);
@@ -405,7 +507,7 @@ describe("POST /api/auth/reset-password", () => {
 
     const res = await request(app).post("/api/auth/reset-password").send({
       email: "nootp@test.com",
-      otp: DEV_OTP,
+      otp: "123456",
       newPassword: "ResetPass@789"
     });
 
@@ -415,7 +517,7 @@ describe("POST /api/auth/reset-password", () => {
   it("returns 400 for unknown email", async () => {
     const res = await request(app).post("/api/auth/reset-password").send({
       email: "nobody@test.com",
-      otp: DEV_OTP,
+      otp: "123456",
       newPassword: "ResetPass@789"
     });
 

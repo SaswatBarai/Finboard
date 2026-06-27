@@ -29,14 +29,15 @@
 
 ## Phone OTP (dev fallback)
 
-Twilio is not configured locally. OTP uses the in-memory dev fallback.
+Twilio is not configured locally. A **random 6-digit OTP** is generated per request.
 
 | Variable | Value |
 |----------|-------|
-| `TWILIO_DEV_OTP` | `123456` |
 | `TWILIO_OTP_TTL_MINUTES` | `5` |
 
-Use OTP **`123456`** for phone verification in local dev.
+Find the OTP in the auth-service console:
+- Phone OTP: `[DEV] Phone OTP for +91...`
+- Password reset: `[DEV] Password reset OTP for email@...`
 
 ---
 

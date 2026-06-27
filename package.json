@@ -24,6 +24,7 @@
     "prisma:migrate": "pnpm --filter @finboard/banking-service exec prisma migrate deploy",
     "prisma:migrate:dev": "pnpm --filter @finboard/banking-service prisma:migrate",
     "prisma:generate": "pnpm --filter @finboard/banking-service prisma:generate",
+    "prisma:studio": "pnpm --filter @finboard/banking-service prisma:studio",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

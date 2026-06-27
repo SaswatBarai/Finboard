@@ -5,20 +5,84 @@ info:
   description: |
     Finboard KYC, banking, and investment platform API.
 
-    All routes are served through the **API Gateway** at http://localhost:4000.
-    Authenticated routes require a JWT in the header: Authorization Bearer token.
+    **Base URL:** http://localhost:4000 (API Gateway)
 
-    ## New user registration (test in this order)
+    **Authorize protected routes:** Click Authorize, enter `Bearer <token>` from signin or verify-otp.
 
-    1. POST /api/auth/signup — name, email, phone, password (no OTP in body).
-    2. OTP is sent automatically. In local dev, use 123456 from otp.devOtp in the response.
-    3. POST /api/auth/verify-otp — phone + OTP returns JWT when registrationComplete is true.
+    ---
 
-    Optional: POST /api/auth/send-otp to resend OTP if it expired.
+    ## Local dev OTP
 
-    Sign-in is blocked (403) until phoneVerified is true.
+    A **random 6-digit OTP** is generated each time. In local dev, check the auth-service console log (`[DEV] Phone OTP for ...`). OTP is **never** returned in API responses.
 
-    Seeded accounts: see AUTH_CREDENTIALS.md in the repo root.
+    Run `pnpm seed:admin` before testing seeded accounts.
+
+    ---
+
+    ## Flow A — New user registration (test in order)
+
+    | Step | Endpoint | Body highlights |
+    |------|----------|-----------------|
+    | 1 | POST /api/auth/signup | name, email, phone, password — **no OTP** |
+    | 2 | POST /api/auth/verify-otp | same phone + otp `123456` → **JWT** |
+    | — | POST /api/auth/send-otp | optional — resend OTP if expired |
+
+    Use a **new** email/phone each signup test (e.g. newuser@finboard.local, +919900007777).
+
+    ---
+
+    ## Flow B — Email login (seeded or verified user)
+
+    | Step | Endpoint | Values |
+    |------|----------|--------|
+    | 1 | POST /api/auth/signin | user@finboard.local / User@12345 |
+
+    ---
+
+    ## Flow C — Phone login
+
+    | Step | Endpoint | Values |
+    |------|----------|--------|
+    | 1 | POST /api/auth/send-otp | phone +919876543210 |
+    | 2 | POST /api/auth/phone-login | phone + otp `123456` |
+
+    ---
+
+    ## Flow D — Admin login
+
+    | Step | Endpoint | Values |
+    |------|----------|--------|
+    | 1 | POST /api/auth/admin/signin | admin@finboard.local / Admin@12345 / adminRole admin |
+
+    ---
+
+    ## Flow E — Protected routes (after JWT)
+
+    | Step | Endpoint | Notes |
+    |------|----------|-------|
+    | 1 | GET /api/auth/me | Bearer token required |
+    | 2 | PATCH /api/auth/change-password | current + new password |
+
+    ---
+
+    ## Flow F — Password reset
+
+    | Step | Endpoint | Values |
+    |------|----------|--------|
+    | 1 | POST /api/auth/forgot-password | user@finboard.local |
+    | 2 | POST /api/auth/reset-password | email + otp `123456` + newPassword |
+
+    ---
+
+    ## Seeded test accounts
+
+    **Customer:** user@finboard.local / User@12345 / +919876543210
+
+    **Admin:** admin@finboard.local / Admin@12345
+
+    **RTA:** rta.admin@finboard.local / RtaAdmin@12345
+
+    Full list: AUTH_CREDENTIALS.md
   contact:
     name: Finboard
   license:
@@ -33,11 +97,17 @@ tags:
     description: Gateway health check
   - name: Auth
     description: |
-      Authentication APIs.
+      Authentication — test in this order:
 
-      **Registration:** `signup` → OTP sent automatically → `verify-otp` → JWT.
+      **Register:** ① signup → ② verify-otp (③ send-otp to resend)
 
-      **Login:** `signin`, `admin/signin`, or `phone-login` (after `send-otp`).
+      **Login:** signin · admin/signin · send-otp → phone-login
+
+      **Protected:** me · change-password (Bearer JWT)
+
+      **Reset:** forgot-password → reset-password
+
+      Dev OTP = random 6 digits (auth-service logs only in development)
   - name: Profile
     description: Investor profile
   - name: KYC
@@ -70,13 +140,13 @@ paths:
   /api/auth/signup:
     post:
       tags: [Auth]
-      summary: "Step 1 — Register (details only, OTP sent automatically)"
+      summary: "Flow A — Step 1: Register (details only, OTP sent automatically)"
       description: |
         Creates a user with `phoneVerified: false` and sends OTP to the phone.
 
         **No OTP in the request body.** After this call, use `POST /api/auth/verify-otp`.
 
-        Local dev OTP is always `123456` (see `otp.devOtp` in the response).
+        Local dev OTP is random — check auth-service logs (`[DEV] Phone OTP for ...`).
       operationId: authSignup
       requestBody:
         required: true
@@ -119,9 +189,6 @@ paths:
                       role: user
                       phoneVerified: false
                       emailVerified: false
-                    otp:
-                      provider: development
-                      devOtp: "123456"
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -130,7 +197,7 @@ paths:
   /api/auth/verify-otp:
     post:
       tags: [Auth]
-      summary: "Step 2 — Verify OTP and complete registration"
+      summary: "Flow A — Step 2: Verify OTP and complete registration"
       description: |
         Call after `POST /api/auth/signup` with the same phone number and the OTP received.
 
@@ -144,6 +211,9 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/VerifyOtpRequest"
+            example:
+              phone: "+919900007777"
+              otp: "123456"
             examples:
               completeRegistration:
                 summary: Complete signup after step 1
@@ -189,13 +259,15 @@ paths:
   /api/auth/send-otp:
     post:
       tags: [Auth]
-      summary: Resend phone OTP (optional)
+      summary: "Flow A optional / Flow C — Step 1: Send phone OTP"
       description: |
         **Not required for new signup** — OTP is sent automatically by `POST /api/auth/signup`.
 
         Use to resend OTP if it expired, or before `POST /api/auth/phone-login`.
 
-        Local dev OTP is `123456`.
+        Phone must belong to a **registered account** (pending signup or verified user).
+
+        OTP is sent via SMS (Twilio) or logged in development — never returned in the response body.
       operationId: authSendOtp
       requestBody:
         required: true
@@ -203,11 +275,17 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SendOtpRequest"
+            example:
+              phone: "+919876543210"
             examples:
-              resend:
-                summary: Resend OTP
+              resendSignup:
+                summary: Resend OTP after signup
                 value:
                   phone: "+919900007777"
+              phoneLogin:
+                summary: Flow C — before phone-login (seeded user)
+                value:
+                  phone: "+919876543210"
       responses:
         "200":
           description: OTP sent
@@ -220,12 +298,13 @@ paths:
                   value:
                     message: OTP sent successfully
                     provider: development
-                    devOtp: "123456"
+        "404":
+          description: No account registered with this phone number
 
   /api/auth/signin:
     post:
       tags: [Auth]
-      summary: Sign in with email and password
+      summary: "Flow B: Sign in with email and password"
       description: |
         Requires `phoneVerified: true`. Pending registrations must complete `verify-otp` first.
       operationId: authSignin
@@ -235,11 +314,19 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SigninRequest"
+            example:
+              email: user@finboard.local
+              password: User@12345
             examples:
               demoUser:
                 summary: Seeded demo user (Rahul)
                 value:
                   email: user@finboard.local
+                  password: User@12345
+              priya:
+                summary: Seeded demo user (Priya)
+                value:
+                  email: priya@finboard.local
                   password: User@12345
       responses:
         "200":
@@ -248,6 +335,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+              examples:
+                demoUser:
+                  summary: Customer login
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    user:
+                      id: 507f1f77bcf86cd799439011
+                      name: Rahul Sharma
+                      email: user@finboard.local
+                      phone: "+919876543210"
+                      role: user
+                      phoneVerified: true
+                      emailVerified: false
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -256,7 +356,7 @@ paths:
   /api/auth/admin/signin:
     post:
       tags: [Auth]
-      summary: Admin sign in
+      summary: "Flow D: Admin sign in"
       description: Validates admin role (`admin`, `rta_admin`, or `amc_admin`). `adminRole` must match the account.
       operationId: authAdminSignin
       requestBody:
@@ -265,6 +365,10 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/AdminSigninRequest"
+            example:
+              email: admin@finboard.local
+              password: Admin@12345
+              adminRole: admin
             examples:
               kycAdmin:
                 summary: KYC Review Admin
@@ -285,6 +389,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+              examples:
+                kycAdmin:
+                  summary: KYC Review Admin
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    user:
+                      id: 507f1f77bcf86cd799439012
+                      name: KYC Review Admin
+                      email: admin@finboard.local
+                      phone: "+910000000001"
+                      role: admin
+                      phoneVerified: true
+                      emailVerified: true
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -293,7 +410,7 @@ paths:
   /api/auth/phone-login:
     post:
       tags: [Auth]
-      summary: Sign in with phone OTP
+      summary: "Flow C — Step 2: Sign in with phone OTP"
       description: |
         **Flow:** `POST /api/auth/send-otp` → enter OTP here.
 
@@ -305,6 +422,9 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/VerifyOtpRequest"
+            example:
+              phone: "+919876543210"
+              otp: "123456"
             examples:
               rahul:
                 summary: Phone login (after send-otp)
@@ -318,15 +438,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+              examples:
+                rahul:
+                  summary: Phone login success
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    user:
+                      id: 507f1f77bcf86cd799439011
+                      name: Rahul Sharma
+                      email: user@finboard.local
+                      phone: "+919876543210"
+                      role: user
+                      phoneVerified: true
+                      emailVerified: false
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Phone not verified — complete signup with verify-otp first
         "404":
-          description: No account for this phone number
+          description: No account registered with this phone number
 
   /api/auth/me:
     get:
       tags: [Auth]
-      summary: Get current user
+      summary: "Flow E: Get current user (Bearer JWT required)"
       operationId: authMe
       security:
         - bearerAuth: []
@@ -340,13 +475,24 @@ paths:
                 properties:
                   user:
                     $ref: "#/components/schemas/User"
+              examples:
+                demoUser:
+                  value:
+                    user:
+                      id: 507f1f77bcf86cd799439011
+                      name: Rahul Sharma
+                      email: user@finboard.local
+                      phone: "+919876543210"
+                      role: user
+                      phoneVerified: true
+                      emailVerified: false
         "401":
           $ref: "#/components/responses/Unauthorized"
 
   /api/auth/change-password:
     patch:
       tags: [Auth]
-      summary: Change password
+      summary: "Flow E: Change password (Bearer JWT required)"
       description: Requires JWT from signin or completed registration.
       operationId: authChangePassword
       security:
@@ -379,8 +525,8 @@ paths:
   /api/auth/forgot-password:
     post:
       tags: [Auth]
-      summary: Request password reset OTP
-      description: In local dev, `devOtp` is returned when the email exists (`123456`).
+      summary: "Flow F — Step 1: Request password reset OTP"
+      description: In local dev, reset OTP is logged to the auth-service console only.
       operationId: authForgotPassword
       requestBody:
         required: true
@@ -393,6 +539,9 @@ paths:
                 email:
                   type: string
                   format: email
+                  example: user@finboard.local
+            example:
+              email: user@finboard.local
             examples:
               demoUser:
                 value:
@@ -404,11 +553,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ForgotPasswordResponse"
+              examples:
+                dev:
+                  value:
+                    message: If an account exists with that email, a reset code has been sent.
+                    provider: development
 
   /api/auth/reset-password:
     post:
       tags: [Auth]
-      summary: Reset password with email OTP
+      summary: "Flow F — Step 2: Reset password with email OTP"
       description: Call `forgot-password` first on the same email.
       operationId: authResetPassword
       requestBody:
@@ -417,6 +571,10 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ResetPasswordRequest"
+            example:
+              email: user@finboard.local
+              otp: "123456"
+              newPassword: User@12345
             examples:
               reset:
                 value:
@@ -1053,7 +1211,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        JWT from `POST /api/auth/verify-otp` (after signup), `POST /api/auth/signin`, or `POST /api/auth/admin/signin`.
+        JWT from any successful login:
+        - Flow A: `POST /api/auth/verify-otp` (after signup)
+        - Flow B: `POST /api/auth/signin`
+        - Flow C: `POST /api/auth/phone-login`
+        - Flow D: `POST /api/auth/admin/signin`
 
         In Scalar, click **Authorize** and enter: `Bearer <your-token>`
 
@@ -1146,9 +1308,20 @@ components:
 
     AuthResponse:
       type: object
+      example:
+        token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          id: 507f1f77bcf86cd799439011
+          name: Rahul Sharma
+          email: user@finboard.local
+          phone: "+919876543210"
+          role: user
+          phoneVerified: true
+          emailVerified: false
       properties:
         token:
           type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         user:
           $ref: "#/components/schemas/User"
 
@@ -1167,16 +1340,6 @@ components:
           example: false
         user:
           $ref: "#/components/schemas/User"
-        otp:
-          type: object
-          properties:
-            provider:
-              type: string
-              example: development
-            devOtp:
-              type: string
-              description: Only returned in local development
-              example: "123456"
 
     VerifyOtpResponse:
       type: object
@@ -1205,9 +1368,6 @@ components:
           type: string
         provider:
           type: string
-        devOtp:
-          type: string
-          example: "123456"
         sid:
           type: string
         status:
@@ -1224,10 +1384,6 @@ components:
           type: string
         provider:
           type: string
-        devOtp:
-          type: string
-          description: Only when account exists in development
-          example: "123456"
 
     SignupRequest:
       type: object
@@ -1260,25 +1416,37 @@ components:
     SigninRequest:
       type: object
       required: [email, password]
+      example:
+        email: user@finboard.local
+        password: User@12345
       properties:
         email:
           type: string
           format: email
+          example: user@finboard.local
         password:
           type: string
+          example: User@12345
 
     AdminSigninRequest:
       allOf:
         - $ref: "#/components/schemas/SigninRequest"
         - type: object
+          example:
+            email: admin@finboard.local
+            password: Admin@12345
+            adminRole: admin
           properties:
             adminRole:
               type: string
               enum: [admin, rta_admin, amc_admin]
+              example: admin
 
     SendOtpRequest:
       type: object
       required: [phone]
+      example:
+        phone: "+919876543210"
       properties:
         phone:
           type: string
@@ -1304,26 +1472,38 @@ components:
     ChangePasswordRequest:
       type: object
       required: [currentPassword, newPassword]
+      example:
+        currentPassword: User@12345
+        newPassword: NewPass@12345
       properties:
         currentPassword:
           type: string
+          example: User@12345
         newPassword:
           type: string
           minLength: 8
           maxLength: 72
+          example: NewPass@12345
 
     ResetPasswordRequest:
       type: object
       required: [email, otp, newPassword]
+      example:
+        email: user@finboard.local
+        otp: "123456"
+        newPassword: User@12345
       properties:
         email:
           type: string
           format: email
+          example: user@finboard.local
         otp:
           type: string
+          example: "123456"
         newPassword:
           type: string
           minLength: 8
+          example: User@12345
 
     Profile:
       type: object

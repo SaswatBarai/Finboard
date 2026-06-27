@@ -47,11 +47,6 @@ function getClient() {
 }
 
 function createOtp() {
-  const env = getServiceEnv();
-  if (env.nodeEnv === "development" && env.twilio.devOtp) {
-    return env.twilio.devOtp;
-  }
-
   return String(crypto.randomInt(100000, 999999));
 }
 
@@ -94,11 +89,10 @@ export async function sendPhoneOtp(phone) {
     return { provider: "twilio_messages" };
   }
 
-  console.log(`Development OTP for ${phone}: ${otp}`);
+  console.log(`[DEV] Phone OTP for ${phone}: ${otp}`);
   console.warn("Twilio SMS sender is not configured. Add TWILIO_FROM_PHONE or TWILIO_MESSAGING_SERVICE_SID to send real SMS.");
   return {
-    provider: "development",
-    devOtp: getServiceEnv().nodeEnv === "development" ? otp : undefined
+    provider: "development"
   };
 }
 

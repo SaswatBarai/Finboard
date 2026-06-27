@@ -1,5 +1,6 @@
 export { default as SignupScreen } from "./screens/signup-screen";
 export { default as SigninScreen } from "./screens/signin-screen";
+export { getAuthErrorMessage, isPendingVerificationConflict } from "./lib/auth-errors";
 export { default as AdminLoginScreen } from "./screens/admin-login-screen";
 export { default as AuthShell } from "./components/auth-shell";
 export { default as ProtectedRoute } from "./components/protected-route";

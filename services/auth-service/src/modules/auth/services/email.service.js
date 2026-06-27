@@ -10,10 +10,6 @@ function isSmtpConfigured() {
 }
 
 function createOtp() {
-  const env = getServiceEnv();
-  if (env.nodeEnv === "development" && env.twilio.devOtp) {
-    return env.twilio.devOtp;
-  }
   return String(crypto.randomInt(100000, 999999));
 }
 
@@ -50,8 +46,7 @@ export async function sendPasswordResetOtp(email) {
 
   console.log(`[DEV] Password reset OTP for ${email}: ${otp}`);
   return {
-    provider: "development",
-    devOtp: env.nodeEnv === "development" ? otp : undefined
+    provider: "development"
   };
 }
 

@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "pnpm prisma:generate && prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "prisma:studio": "prisma studio",
     "test": "BANK_DATABASE_URL=postgresql://finboard:finboard_pass@localhost:5432/finboard_banking_test NODE_OPTIONS='--experimental-vm-modules' jest --forceExit --runInBand",
     "test:coverage": "BANK_DATABASE_URL=postgresql://finboard:finboard_pass@localhost:5432/finboard_banking_test NODE_OPTIONS='--experimental-vm-modules' jest --coverage --forceExit --runInBand"
   },

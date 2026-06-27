@@ -45,4 +45,14 @@ describe("API Gateway", () => {
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toMatch(/javascript/);
   });
+
+  it("allows API requests from the gateway docs origin (Scalar)", async () => {
+    const app = buildGatewayApp();
+    const response = await request(app)
+      .get("/health")
+      .set("Origin", "http://localhost:4000");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:4000");
+  });
 });

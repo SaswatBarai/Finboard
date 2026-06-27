@@ -76,6 +76,16 @@ export function buildGatewayApp() {
         if (!origin || env.clientOrigins.includes(origin)) {
           return callback(null, true);
         }
+
+        const gatewayOrigins = [
+          `http://localhost:${env.port}`,
+          `http://127.0.0.1:${env.port}`
+        ];
+
+        if (gatewayOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
         return callback(new Error(`CORS blocked origin: ${origin}`));
       },
       credentials: true
@@ -128,7 +138,13 @@ export function buildGatewayApp() {
       createProxyMiddleware({
         target: route.target,
         changeOrigin: true,
-        pathRewrite: (path) => `${route.prefix}${path}`
+        pathRewrite: (path) => `${route.prefix}${path}`,
+        on: {
+          proxyReq(proxyReq) {
+            proxyReq.removeHeader("origin");
+            proxyReq.removeHeader("referer");
+          }
+        }
       })
     );
   }

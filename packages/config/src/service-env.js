@@ -8,7 +8,7 @@ export function getServiceEnv(defaults = {}) {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
     bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 12),
     internalServiceKey: process.env.INTERNAL_SERVICE_KEY || "dev-internal-key",
-    clientOrigins: (process.env.CLIENT_ORIGIN || "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173")
+    clientOrigins: (process.env.CLIENT_ORIGIN || "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000,http://127.0.0.1:4000")
       .split(",")
       .map((o) => o.trim())
       .filter(Boolean),
@@ -28,8 +28,7 @@ export function getServiceEnv(defaults = {}) {
       verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID,
       fromPhone: process.env.TWILIO_FROM_PHONE,
       messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
-      otpTtlMinutes: Number(process.env.TWILIO_OTP_TTL_MINUTES || 5),
-      devOtp: process.env.TWILIO_DEV_OTP || "123456"
+      otpTtlMinutes: Number(process.env.TWILIO_OTP_TTL_MINUTES || 5)
     },
     smtp: {
       host: process.env.SMTP_HOST,

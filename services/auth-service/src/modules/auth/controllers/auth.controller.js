@@ -6,15 +6,21 @@ import { signJwt } from "../../../common/helpers/jwt.helper.js";
 
 export async function sendOtp(req, res, next) {
   try {
-    const result = await sendPhoneOtp(req.body.phone);
+    const phone = req.body.phone;
+    const user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(404).json({ message: "No account registered with this phone number" });
+    }
+
+    const result = await sendPhoneOtp(phone);
     return res.json({
       message: "OTP sent successfully",
       provider: result.provider,
       sid: result.sid,
       status: result.status,
       to: result.to,
-      channel: result.channel,
-      devOtp: result.devOtp
+      channel: result.channel
     });
   } catch (error) {
     next(error);
@@ -89,17 +95,13 @@ export async function signup(req, res, next) {
     await user.setPassword(password);
     await user.save();
 
-    const otpResult = await sendPhoneOtp(phone);
+    await sendPhoneOtp(phone);
 
     return res.status(201).json({
       message: "Account created. OTP sent to your phone for verification.",
       requiresPhoneVerification: true,
       registrationComplete: false,
-      user: user.toSafeJSON(),
-      otp: {
-        provider: otpResult.provider,
-        devOtp: otpResult.devOtp
-      }
+      user: user.toSafeJSON()
     });
   } catch (error) {
     next(error);
@@ -137,6 +139,10 @@ export async function adminSignin(req, res, next) {
       return res.status(401).json({ message: "Invalid admin email or password" });
     }
 
+    if (!user.phoneVerified) {
+      return res.status(403).json({ message: "Complete phone verification before signing in" });
+    }
+
     if (!["admin", "rta_admin", "amc_admin"].includes(user.role)) {
       return res.status(403).json({ message: "This account is not allowed to access the admin dashboard" });
     }
@@ -156,20 +162,23 @@ export async function adminSignin(req, res, next) {
 
 export async function phoneLogin(req, res, next) {
   try {
+    const user = await User.findOne({ phone: req.body.phone });
+
+    if (!user) {
+      return res.status(404).json({ message: "No account registered with this phone number" });
+    }
+
+    if (!user.phoneVerified) {
+      return res.status(403).json({ message: "Complete phone verification before signing in" });
+    }
+
     const otpVerified = await verifyPhoneOtp(req.body.phone, req.body.otp);
 
     if (!otpVerified) {
       return res.status(401).json({ message: "Invalid or expired OTP" });
     }
 
-    const user = await User.findOne({ phone: req.body.phone });
-
-    if (!user) {
-      return res.status(404).json({ message: "No account exists for this verified phone number" });
-    }
-
     user.lastLoginAt = new Date();
-    user.phoneVerified = true;
     await user.save();
 
     return res.json({ token: signJwt(user), user: user.toSafeJSON() });
@@ -202,12 +211,10 @@ export async function changePassword(req, res, next) {
 export async function forgotPassword(req, res, next) {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email: email.toLowerCase() });
     const result = await sendPasswordResetOtp(email);
     return res.json({
       message: "If an account exists with that email, a reset code has been sent",
-      provider: result.provider,
-      devOtp: user ? result.devOtp : undefined
+      provider: result.provider
     });
   } catch (error) {
     next(error);

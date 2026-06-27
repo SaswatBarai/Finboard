@@ -5,10 +5,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import AuthShell from "../components/auth-shell";
 import { AuthFooterText, AuthLink } from "../components/auth-primitives";
+import { getAuthErrorMessage, isPendingVerificationConflict } from "../lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, getApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "../context/auth-context";
 
 const initialForm = {
@@ -36,6 +37,11 @@ export default function SignupPage() {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
   }
 
+  function goToVerificationStep() {
+    setOtpSent(true);
+    setStep(2);
+  }
+
   async function submitDetails(event) {
     event.preventDefault();
 
@@ -46,21 +52,23 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      const response = await api.post("/auth/signup", {
+      await api.post("/auth/signup", {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password
       });
 
-      setOtpSent(true);
-      if (response.data.otp?.devOtp) {
-        setForm((current) => ({ ...current, otp: response.data.otp.devOtp }));
-      }
-      setStep(2);
-      toast.success("Account saved. OTP sent to your phone.");
+      goToVerificationStep();
+      toast.success("Account created. Enter the OTP sent to your phone.");
     } catch (error) {
-      toast.error(getApiError(error));
+      if (isPendingVerificationConflict(error)) {
+        goToVerificationStep();
+        toast.message(getAuthErrorMessage(error));
+        return;
+      }
+
+      toast.error(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -69,13 +77,11 @@ export default function SignupPage() {
   async function resendOtp() {
     setLoading(true);
     try {
-      const response = await api.post("/auth/send-otp", { phone: form.phone.trim() });
-      if (response.data.devOtp) {
-        setForm((current) => ({ ...current, otp: response.data.devOtp }));
-      }
+      await api.post("/auth/send-otp", { phone: form.phone.trim() });
+      setOtpSent(true);
       toast.success("OTP sent again");
     } catch (error) {
-      toast.error(getApiError(error));
+      toast.error(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -97,7 +103,7 @@ export default function SignupPage() {
       }
 
       if (!response.data.registrationComplete || !response.data.token) {
-        toast.error("Registration could not be completed. Try again.");
+        toast.error("Registration could not be completed. Check the OTP and try again.");
         return;
       }
 
@@ -105,14 +111,14 @@ export default function SignupPage() {
       toast.success("Registration complete");
       router.push("/dashboard");
     } catch (error) {
-      toast.error(getApiError(error));
+      toast.error(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <AuthShell title="Create your account" subtitle="Enter your details first. We send OTP next, then you verify to finish.">
+    <AuthShell title="Create your account" subtitle="Enter your details, then verify the OTP sent to your phone.">
       <div className="mb-6 flex items-center justify-center gap-8">
         {steps.map((item) => (
           <div key={item.number} className="flex flex-col items-center gap-1 text-center">
@@ -175,7 +181,9 @@ export default function SignupPage() {
             <p className="font-medium text-foreground">{form.name}</p>
             <p className="text-muted-foreground">{form.email}</p>
             <p className="text-muted-foreground">{form.phone}</p>
-            {otpSent ? <p className="mt-2 text-primary">OTP sent to your phone</p> : null}
+            {otpSent ? (
+              <p className="mt-2 text-primary">OTP sent to your phone. Enter the code from SMS to finish registration.</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="otp" className="auth-field-label">
