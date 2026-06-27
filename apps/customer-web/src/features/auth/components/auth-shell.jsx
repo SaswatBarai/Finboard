@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShieldCheck, Lock, Zap } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { FinboardMark } from "@/components/ui/finboard-logo";
+import { ThemeSelector } from "@/components/theme-selector";
 
 const INVESTOR_TRUST = [
   { icon: ShieldCheck, label: "Identity verified securely"  },
@@ -88,13 +89,14 @@ export default function AuthShell({ title, subtitle, children, variant = "invest
 
       {/* Mobile top bar */}
       <header className="border-b border-[var(--fb-ink)]/8 bg-card lg:hidden">
-        <div className="mx-auto flex h-14 max-w-lg items-center px-6">
+        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-6">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <FinboardMark size={30} />
             <span className="text-[15px] font-black tracking-[-0.04em] text-[var(--fb-ink)]">
               Finboard
             </span>
           </Link>
+          <ThemeSelector />
         </div>
       </header>
 

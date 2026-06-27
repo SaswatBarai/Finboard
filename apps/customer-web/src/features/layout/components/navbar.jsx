@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { FinboardMark } from "@/components/ui/finboard-logo";
+import { ThemeSelector } from "@/components/theme-selector";
 import { bankingApi } from "../../banking/api/banking-api";
 import { allInstruments } from "../../investments/data/market-data";
 import { notificationApi } from "../../notifications/api/notification-api";
@@ -360,6 +361,8 @@ export default function Navbar() {
           </PopoverContent>
         </Popover>
 
+        <ThemeSelector />
+
         <ProfileMenu user={user} onLogout={handleLogout} />
 
         {/* Mobile menu */}
@@ -413,6 +416,13 @@ export default function Navbar() {
             </nav>
 
             <div className="mt-auto border-t border-border px-6 py-5">
+              <div className="mb-5 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold">Appearance</p>
+                  <p className="text-xs text-muted-foreground">Light, dark, or match your device</p>
+                </div>
+                <ThemeSelector variant="toggle" />
+              </div>
               <div className="mb-4 flex items-center gap-3">
                 <Avatar className="size-10">
                   <AvatarFallback className="bg-primary/15 font-semibold">

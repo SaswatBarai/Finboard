@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ThemeSelector } from "@/components/theme-selector";
 import { api, getApiError } from "@/lib/api";
 import { formatDate, maskEmail, maskPan, maskPhone } from "@/lib/format";
 import { useAuth } from "../../auth/context/auth-context";
@@ -397,6 +398,16 @@ export default function ProfilePage() {
                     {changePassword.isPending ? "Updating…" : "Update password"}
                   </Button>
                 </form>
+
+              <div className="mt-10 max-w-md border-t border-border/60 pt-8">
+                <div className="mb-4 space-y-1">
+                  <h2 className="text-lg font-semibold">Appearance</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Finboard opens in dark mode by default. Choose light, dark, or follow your device setting.
+                  </p>
+                </div>
+                <ThemeSelector variant="toggle" />
+              </div>
           </TabsContent>
           </Tabs>
         </Card>

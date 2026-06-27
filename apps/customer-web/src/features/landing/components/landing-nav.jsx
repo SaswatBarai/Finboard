@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Menu, Sun, Moon } from "lucide-react";
-import { useTheme } from "next-themes";
+import { ArrowUpRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeSelector } from "@/components/theme-selector";
 import {
   Sheet,
   SheetContent,
@@ -99,7 +99,6 @@ function NavLinkItem({ link, active, onNavigate, onSelect, variant = "desktop" }
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
   const { active, setManualActive } = useActiveSection(navSectionIds);
 
   useEffect(() => {
@@ -129,14 +128,9 @@ export default function LandingNav() {
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="hidden rounded-full p-2 text-[var(--fb-body)] transition-colors hover:text-[var(--fb-ink)] sm:inline-flex"
-              aria-label="Toggle dark mode"
-            >
-              <Sun className="size-4 dark:hidden" aria-hidden />
-              <Moon className="hidden size-4 dark:inline" aria-hidden />
-            </button>
+            <ThemeSelector
+              buttonClassName="hidden text-[var(--fb-body)] hover:text-[var(--fb-ink)] sm:inline-flex"
+            />
             <Link
               href="/signin"
               className="hidden rounded-full px-3 py-2 text-sm font-semibold text-[var(--fb-body)] transition-colors hover:text-[var(--fb-ink)] sm:inline-flex"
@@ -191,6 +185,13 @@ export default function LandingNav() {
                 </nav>
 
                 <div className="mt-auto border-t border-[var(--fb-ink)]/8 px-6 py-6">
+                  <div className="mb-5 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--fb-ink)]">Appearance</p>
+                      <p className="text-xs text-[var(--fb-body)]">Light, dark, or match your device</p>
+                    </div>
+                    <ThemeSelector variant="toggle" />
+                  </div>
                   <Button
                     asChild
                     className="h-12 w-full gap-2 rounded-2xl bg-[var(--fb-primary)] text-base font-semibold text-[var(--fb-on-primary)] hover:bg-[var(--fb-primary-active)]"
