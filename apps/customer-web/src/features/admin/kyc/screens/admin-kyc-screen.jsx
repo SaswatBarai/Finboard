@@ -17,7 +17,7 @@ import { getApiError } from "@/lib/api";
 import { kycApi } from "../../../kyc/api/kyc-api";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../../../auth/context/auth-context";
-import { getDocument, KycReviewPanel, StatusBadge } from "../components/kyc-review-panel";
+import { getDocument, KycReviewPanel, StatusBadge, AiScoreBadge } from "../components/kyc-review-panel";
 
 export default function AdminKycPage() {
   const [selectedId, setSelectedId] = useState(null);
@@ -163,7 +163,10 @@ export default function AdminKycPage() {
                           <div className="min-w-0 flex-1 space-y-1">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <strong className="text-sm">{item.name}</strong>
-                              <StatusBadge status={item.status} />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <AiScoreBadge score={item.aiVerification?.overallScore} />
+                                <StatusBadge status={item.status} />
+                              </div>
                             </div>
                             <p className="truncate text-sm text-muted-foreground">{item.user?.email || "No user email"}</p>
                             <p className="text-xs text-muted-foreground">

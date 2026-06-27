@@ -6,6 +6,9 @@ import Tesseract from "tesseract.js";
 import { getServiceEnv } from "@finboard/config";
 
 const langPath = join(dirname(fileURLToPath(import.meta.url)), "../../../../");
+const MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions";
+const MISTRAL_OCR_URL = "https://api.mistral.ai/v1/ocr";
+const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function normalizePan(value) {
   return String(value || "")
@@ -79,13 +82,45 @@ function mimeTypeForPath(filePath) {
   return "image/jpeg";
 }
 
-function openRouterHeaders(apiKey) {
+function imageDataUri(filePath) {
+  const mimeType = mimeTypeForPath(filePath);
+  const imageBase64 = readFileSync(filePath).toString("base64");
+  return `data:${mimeType};base64,${imageBase64}`;
+}
+
+function extractionPrompt(type) {
+  if (type === "pan") {
+    return {
+      expectedKeys: "name, panNumber",
+      textPrompt: "Extract the Indian PAN card holder name and PAN number from OCR text.",
+      visionPrompt: "Read this Indian PAN card image and extract the card holder name and PAN number."
+    };
+  }
+
   return {
-    Authorization: `Bearer ${apiKey}`,
-    "Content-Type": "application/json",
-    "HTTP-Referer": "http://localhost:4000",
-    "X-Title": "Finboard KYC OCR"
+    expectedKeys: "name, aadhaarNumber",
+    textPrompt: "Extract the Aadhaar holder name and 12 digit Aadhaar number from OCR text.",
+    visionPrompt:
+      "Read this Indian Aadhaar document image and extract the holder full name and 12-digit Aadhaar number (digits only, no spaces)."
   };
+}
+
+function mapParsedFields(parsed, type, fallback = {}) {
+  if (type === "pan") {
+    return {
+      name: String(parsed.name || fallback.name || "").trim(),
+      panNumber: normalizePan(parsed.panNumber || fallback.panNumber)
+    };
+  }
+
+  return {
+    name: String(parsed.name || fallback.name || "").trim(),
+    aadhaarNumber: normalizeAadhaar(parsed.aadhaarNumber || fallback.aadhaarNumber)
+  };
+}
+
+function emptyExtraction(type) {
+  return type === "pan" ? { panNumber: "", name: "" } : { aadhaarNumber: "", name: "" };
 }
 
 async function runTesseractOcr(filePath) {
@@ -97,84 +132,140 @@ async function runTesseractOcr(filePath) {
   return result.data?.text?.trim() || "";
 }
 
-async function callOpenRouter(model, messages) {
+async function runMistralDocumentOcr(filePath) {
+  const env = getServiceEnv();
+  if (!env.mistralApiKey) {
+    return "";
+  }
+
+  try {
+    const response = await axios.post(
+      MISTRAL_OCR_URL,
+      {
+        model: env.mistralOcrModel,
+        document: {
+          type: "image_url",
+          image_url: imageDataUri(filePath)
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${env.mistralApiKey}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 60000
+      }
+    );
+
+    const pages = response.data?.pages || [];
+    return pages
+      .map((page) => page.markdown || page.text || "")
+      .join("\n")
+      .trim();
+  } catch (error) {
+    console.warn("Mistral document OCR failed:", error.response?.data || error.message);
+    return "";
+  }
+}
+
+async function callMistralChat(model, messages) {
   const env = getServiceEnv();
   const response = await axios.post(
-    "https://openrouter.ai/api/v1/chat/completions",
+    MISTRAL_CHAT_URL,
     {
       model,
       messages,
-      temperature: 0
+      temperature: 0,
+      max_tokens: env.llmMaxTokens
     },
     {
-      headers: openRouterHeaders(env.openRouterApiKey)
+      headers: {
+        Authorization: `Bearer ${env.mistralApiKey}`,
+        "Content-Type": "application/json"
+      },
+      timeout: 60000
     }
   );
 
   return cleanJsonContent(response.data.choices?.[0]?.message?.content || "{}");
 }
 
-async function extractWithOpenRouter(ocrText, type) {
-  const fallback = parseFallback(ocrText, type);
+async function callOpenRouterChat(model, messages) {
+  const env = getServiceEnv();
+  const response = await axios.post(
+    OPENROUTER_CHAT_URL,
+    {
+      model,
+      messages,
+      temperature: 0,
+      max_tokens: env.llmMaxTokens
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${env.openRouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:4000",
+        "X-Title": "Finboard KYC OCR"
+      },
+      timeout: 60000
+    }
+  );
 
-  if (!getServiceEnv().openRouterApiKey || !ocrText) {
+  return cleanJsonContent(response.data.choices?.[0]?.message?.content || "{}");
+}
+
+async function extractWithLlmText(ocrText, type, provider) {
+  const fallback = parseFallback(ocrText, type);
+  const env = getServiceEnv();
+  const { expectedKeys, textPrompt } = extractionPrompt(type);
+
+  if (!ocrText) {
     return fallback;
   }
 
-  const expectedKeys = type === "pan" ? "name, panNumber" : "name, aadhaarNumber";
-  const prompt =
-    type === "pan"
-      ? "Extract the Indian PAN card holder name and PAN number from OCR text."
-      : "Extract the Aadhaar holder name and 12 digit Aadhaar number from OCR text.";
+  if (provider === "mistral" && !env.mistralApiKey) {
+    return fallback;
+  }
+
+  if (provider === "openrouter" && !env.openRouterApiKey) {
+    return fallback;
+  }
 
   try {
-    const content = await callOpenRouter(getServiceEnv().openRouterModel, [
+    const messages = [
       {
         role: "system",
         content: `Return valid minified JSON only with keys: ${expectedKeys}. Use empty string for missing values. Do not include markdown.`
       },
       {
         role: "user",
-        content: `${prompt}\n\nOCR TEXT:\n${ocrText}`
+        content: `${textPrompt}\n\nOCR TEXT:\n${ocrText}`
       }
-    ]);
+    ];
 
-    const parsed = JSON.parse(content);
+    const content =
+      provider === "mistral"
+        ? await callMistralChat(env.mistralTextModel, messages)
+        : await callOpenRouterChat(env.openRouterModel, messages);
 
-    if (type === "pan") {
-      return {
-        name: parsed.name || fallback.name || "",
-        panNumber: normalizePan(parsed.panNumber || fallback.panNumber)
-      };
-    }
-
-    return {
-      name: parsed.name || fallback.name || "",
-      aadhaarNumber: normalizeAadhaar(parsed.aadhaarNumber || fallback.aadhaarNumber)
-    };
+    return mapParsedFields(JSON.parse(content), type, fallback);
   } catch (error) {
-    console.warn(`OpenRouter text extraction fallback for ${type}:`, error.response?.data || error.message);
+    const label = provider === "mistral" ? "Mistral" : "OpenRouter";
+    console.warn(`${label} text extraction fallback for ${type}:`, error.response?.data || error.message);
     return fallback;
   }
 }
 
-async function extractWithOpenRouterVision(filePath, type) {
+async function extractWithMistralVision(filePath, type) {
   const env = getServiceEnv();
-
-  if (!env.openRouterApiKey) {
-    return type === "pan" ? { panNumber: "", name: "" } : { aadhaarNumber: "", name: "" };
+  if (!env.mistralApiKey) {
+    return emptyExtraction(type);
   }
 
-  const mimeType = mimeTypeForPath(filePath);
-  const imageBase64 = readFileSync(filePath).toString("base64");
-  const expectedKeys = type === "pan" ? "name, panNumber" : "name, aadhaarNumber";
-  const prompt =
-    type === "pan"
-      ? "Read this Indian PAN card image and extract the card holder name and PAN number."
-      : "Read this Indian Aadhaar document image and extract the holder full name and 12-digit Aadhaar number (digits only, no spaces).";
+  const { expectedKeys, visionPrompt } = extractionPrompt(type);
 
   try {
-    const content = await callOpenRouter(env.openRouterVisionModel, [
+    const content = await callMistralChat(env.mistralVisionModel, [
       {
         role: "system",
         content: `Return valid minified JSON only with keys: ${expectedKeys}. Use empty string for missing values. Do not include markdown.`
@@ -182,44 +273,108 @@ async function extractWithOpenRouterVision(filePath, type) {
       {
         role: "user",
         content: [
-          { type: "text", text: prompt },
+          { type: "text", text: visionPrompt },
+          { type: "image_url", image_url: imageDataUri(filePath) }
+        ]
+      }
+    ]);
+
+    return mapParsedFields(JSON.parse(content), type);
+  } catch (error) {
+    console.warn(`Mistral vision extraction failed for ${type}:`, error.response?.data || error.message);
+    return emptyExtraction(type);
+  }
+}
+
+async function extractWithOpenRouterVision(filePath, type) {
+  const env = getServiceEnv();
+  if (!env.openRouterApiKey) {
+    return emptyExtraction(type);
+  }
+
+  const { expectedKeys, visionPrompt } = extractionPrompt(type);
+  const mimeType = mimeTypeForPath(filePath);
+  const imageBase64 = readFileSync(filePath).toString("base64");
+
+  try {
+    const content = await callOpenRouterChat(env.openRouterVisionModel, [
+      {
+        role: "system",
+        content: `Return valid minified JSON only with keys: ${expectedKeys}. Use empty string for missing values. Do not include markdown.`
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: visionPrompt },
           { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
         ]
       }
     ]);
 
-    const parsed = JSON.parse(content);
+    return mapParsedFields(JSON.parse(content), type);
+  } catch (error) {
+    console.warn(`OpenRouter vision extraction failed for ${type}:`, error.response?.data || error.message);
+    return emptyExtraction(type);
+  }
+}
 
-    if (type === "pan") {
+async function extractWithVision(filePath, type) {
+  const env = getServiceEnv();
+
+  if (env.mistralApiKey) {
+    const mistralExtracted = await extractWithMistralVision(filePath, type);
+    if (hasExtractedFields(mistralExtracted, type)) {
+      return { extracted: mistralExtracted, source: "mistral_vision" };
+    }
+
+    if (env.openRouterApiKey) {
+      const openRouterExtracted = await extractWithOpenRouterVision(filePath, type);
       return {
-        name: String(parsed.name || "").trim(),
-        panNumber: normalizePan(parsed.panNumber)
+        extracted: mergeExtracted(openRouterExtracted, mistralExtracted, type),
+        source: hasExtractedFields(openRouterExtracted, type) ? "openrouter_vision" : ""
       };
     }
 
-    return {
-      name: String(parsed.name || "").trim(),
-      aadhaarNumber: normalizeAadhaar(parsed.aadhaarNumber)
-    };
-  } catch (error) {
-    console.warn(`OpenRouter vision extraction failed for ${type}:`, error.response?.data || error.message);
-    return type === "pan" ? { panNumber: "", name: "" } : { aadhaarNumber: "", name: "" };
+    return { extracted: mistralExtracted, source: "" };
   }
+
+  if (env.openRouterApiKey) {
+    const openRouterExtracted = await extractWithOpenRouterVision(filePath, type);
+    return {
+      extracted: openRouterExtracted,
+      source: hasExtractedFields(openRouterExtracted, type) ? "openrouter_vision" : ""
+    };
+  }
+
+  return { extracted: emptyExtraction(type), source: "" };
 }
 
 export async function processDocument(filePath, type) {
   try {
     const env = getServiceEnv();
-    const ocrText = await runTesseractOcr(filePath);
-    let extracted = await extractWithOpenRouter(ocrText, type);
-    let extractionSource = env.openRouterApiKey ? "tesseract_openrouter" : "tesseract_regex";
+    const tesseractText = await runTesseractOcr(filePath);
+    const mistralText = env.mistralApiKey ? await runMistralDocumentOcr(filePath) : "";
+    const ocrText = [tesseractText, mistralText].filter(Boolean).join("\n\n").trim();
 
-    if (env.openRouterApiKey && !hasExtractedFields(extracted, type)) {
-      const visionExtracted = await extractWithOpenRouterVision(filePath, type);
-      extracted = mergeExtracted(visionExtracted, extracted, type);
+    let extracted = parseFallback(ocrText, type);
+    let extractionSource = "tesseract_regex";
 
-      if (hasExtractedFields(extracted, type)) {
-        extractionSource = "openrouter_vision";
+    if (env.mistralApiKey) {
+      extracted = await extractWithLlmText(ocrText, type, "mistral");
+      extractionSource = "tesseract_mistral";
+    } else if (env.openRouterApiKey) {
+      extracted = await extractWithLlmText(ocrText, type, "openrouter");
+      extractionSource = "tesseract_openrouter";
+    }
+
+    const hasLlmProvider = Boolean(env.mistralApiKey || env.openRouterApiKey);
+
+    if (hasLlmProvider && !hasExtractedFields(extracted, type)) {
+      const visionResult = await extractWithVision(filePath, type);
+      extracted = mergeExtracted(visionResult.extracted, extracted, type);
+
+      if (visionResult.source) {
+        extractionSource = visionResult.source;
       }
     }
 

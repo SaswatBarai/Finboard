@@ -1580,9 +1580,45 @@ components:
             - approved
             - rejected
             - failed
+        aiVerification:
+          $ref: "#/components/schemas/AiVerification"
         adminRemarks:
           type: string
         createdAt:
+          type: string
+          format: date-time
+
+    AiVerification:
+      type: object
+      properties:
+        overallScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        recommendation:
+          type: string
+          enum: [approve, review, reject]
+        fields:
+          type: object
+          additionalProperties: true
+        alignments:
+          type: object
+          properties:
+            userInputVsIdentity:
+              type: integer
+            ocrVsIdentity:
+              type: integer
+            imagesVsIdentity:
+              type: integer
+              nullable: true
+        summary:
+          type: string
+        verificationSource:
+          type: string
+          example: mistral_vision
+        model:
+          type: string
+        verifiedAt:
           type: string
           format: date-time
 

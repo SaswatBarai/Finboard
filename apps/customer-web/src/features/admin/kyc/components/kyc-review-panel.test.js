@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { statusLabel, statusBadgeClass, isKycReviewable } from "@/features/admin/kyc/components/kyc-review-panel";
+import {
+  statusLabel,
+  statusBadgeClass,
+  isKycReviewable,
+  formatScore,
+  scoreToneClass,
+  recommendationLabel,
+  recommendationBadgeClass
+} from "@/features/admin/kyc/components/kyc-review-panel";
 
 describe("kyc-review-panel helpers", () => {
   it("maps known statuses to labels", () => {
@@ -15,5 +23,21 @@ describe("kyc-review-panel helpers", () => {
     expect(isKycReviewable("pending_admin_review")).toBe(true);
     expect(isKycReviewable("approved")).toBe(false);
     expect(isKycReviewable("rejected")).toBe(false);
+  });
+
+  it("formats AI scores", () => {
+    expect(formatScore(92)).toBe("92%");
+    expect(formatScore(null)).toBe("N/A");
+  });
+
+  it("maps score values to tone classes", () => {
+    expect(scoreToneClass(90)).toContain("positive-deep");
+    expect(scoreToneClass(60)).toContain("warning");
+    expect(scoreToneClass(20)).toContain("negative");
+  });
+
+  it("maps AI recommendations to labels and badge classes", () => {
+    expect(recommendationLabel("approve")).toBe("Recommend Approve");
+    expect(recommendationBadgeClass("reject")).toContain("negative");
   });
 });

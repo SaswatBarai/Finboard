@@ -802,13 +802,14 @@ Submits multipart form to `POST /api/kyc/submit`.
 | 6 | **Demo fallback** | If OCR empty but identity found, inject seeded extraction |
 | 7 | **Document assembly** | `fileToDocument()` — metadata + OCR + URL `/uploads/kyc/{file}` |
 | 8 | **Match flags** | Compare extracted PAN/Aadhaar to user-entered values |
-| 9 | **Checks object** | `identityExists`, `nameMatchesDataset`, `panMatchesDataset`, `aadhaarMatchesDataset`, `panOcrMatches`, `aadhaarOcrMatches` |
-| 10 | **Pass rule** | `allPassed = identityExists && nameMatches && panMatches && aadhaarMatches` (OCR matches informational) |
-| 11 | **Create application** | `KycApplication.create()` — status `pending_admin_review` or `failed` |
-| 12 | **Update profile** | `UserProfile.kycStatus` → `pending_review` or `rejected` |
-| 13 | **Notify** | `notifyUser()` — submission or failure message |
-| 14 | **Audit** | `audit(req, "KYC_SUBMITTED", ...)` |
-| 15 | **Response** | `201 { application }` |
+| 9 | **AI verification** | `verifyKycWithAi()` — Mistral vision compares user input, OCR output, and document images against seeded identity (ground truth); stores `aiVerification` scores |
+| 10 | **Checks object** | `identityExists`, `nameMatchesDataset`, `panMatchesDataset`, `aadhaarMatchesDataset`, `panOcrMatches`, `aadhaarOcrMatches` |
+| 11 | **Pass rule** | `canReview = identityExists` — identity found → `pending_admin_review`; missing → `failed`. AI score is advisory; admin approves/rejects manually |
+| 12 | **Create application** | `KycApplication.create()` — status `pending_admin_review` or `failed` |
+| 13 | **Update profile** | `UserProfile.kycStatus` → `pending_review` or `rejected` |
+| 14 | **Notify** | `notifyUser()` — submission or failure message |
+| 15 | **Audit** | `audit(req, "KYC_SUBMITTED", ...)` |
+| 16 | **Response** | `201 { application }` |
 
 ## 7.4 Admin Review Flow
 
@@ -821,7 +822,7 @@ Submits multipart form to `POST /api/kyc/submit`.
 
 ### Detail — `GET /api/kyc/admin/applications/:id`
 
-Returns `{ application, user, identity, adminReview }` with side-by-side entered vs seeded vs OCR data.
+Returns `{ application, user, identity, adminReview }` with side-by-side entered vs seeded vs OCR data and `aiVerification` accuracy scores.
 
 ### Approve — `POST .../approve`
 
@@ -840,8 +841,8 @@ Same pattern with `rejected` status and optional remarks in body.
 
 `features/admin/kyc/screens/admin-kyc-screen.jsx`:
 
-- Lists applications with status badges
-- Inline detail panel with document URLs, OCR comparison, check pills
+- Lists applications with status badges and AI accuracy score
+- Inline detail panel with document URLs, OCR comparison, AI verification card, check pills
 - Approve/reject with remarks textarea
 - Uses TanStack Query mutations; invalidates on success
 

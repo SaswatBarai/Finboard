@@ -9,7 +9,12 @@ export {
 } from "./clients/profile-client.js";
 export { registerLocalAuthHandler, getUserById, getUsersByIds, listUsersByRole } from "./clients/auth-client.js";
 export { registerLocalBankingHandler, debitForInvestment, getLinkedAccount } from "./clients/banking-client.js";
-export { registerLocalOcrHandler, processDocumentOcr } from "./clients/ocr-client.js";
+export {
+  registerLocalOcrHandler,
+  registerLocalVerifyKycHandler,
+  processDocumentOcr,
+  verifyKycWithAi
+} from "./clients/ocr-client.js";
 export { registerLocalIdentityHandler, lookupIdentity } from "./clients/identity-client.js";
 export {
   registerLocalPortfolioHandler,

@@ -7,6 +7,7 @@ import { KycApplication } from "../models/kyc-application.model.js";
 import {
   lookupIdentity,
   processDocumentOcr,
+  verifyKycWithAi,
   notifyUser,
   audit,
   updateProfileKycStatus,
@@ -149,6 +150,17 @@ export async function submitKyc(req, res, next) {
     panDoc.match = panDoc.extracted?.panNumber?.toUpperCase?.() === payload.panNumber;
     aadhaarDoc.match = String(aadhaarDoc.extracted?.aadhaarNumber || "") === payload.aadhaarNumber;
 
+    const aiVerification = await verifyKycWithAi({
+      userEntered: payload,
+      identity,
+      ocrExtracted: {
+        pan: panDoc.extracted || {},
+        aadhaar: aadhaarDoc.extracted || {}
+      },
+      panFilePath: panOcrPath,
+      aadhaarFilePath: aadhaarOcrPath
+    });
+
     const checks = {
       identityExists: Boolean(identity),
       nameMatchesDataset: Boolean(identity && normalizeName(identity.name) === normalizeName(payload.name)),
@@ -158,34 +170,37 @@ export async function submitKyc(req, res, next) {
       aadhaarOcrMatches: aadhaarDoc.match
     };
 
-    const allPassed = checks.identityExists && checks.nameMatchesDataset && checks.panMatchesDataset && checks.aadhaarMatchesDataset;
+    const canReview = Boolean(identity);
 
     const application = await KycApplication.create({
       userId: req.user._id,
       ...payload,
       dummyIdentityId: identity?._id,
-      status: allPassed ? "pending_admin_review" : "failed",
-      failureReason: allPassed ? "" : "Name, PAN, or Aadhaar does not match the seeded identity database.",
+      status: canReview ? "pending_admin_review" : "failed",
+      failureReason: canReview ? "" : "Name, PAN, or Aadhaar does not match the seeded identity database.",
       checks,
+      aiVerification,
       documents: [panDoc, aadhaarDoc],
       submittedAt: new Date()
     });
 
     await updateProfileKycStatus(req.user._id, {
       pan: payload.panNumber,
-      kycStatus: allPassed ? "pending_review" : "rejected"
+      kycStatus: canReview ? "pending_review" : "rejected"
     });
 
     if (!isKafkaEnabled()) {
       await notifyUser(
         req.user._id,
-        allPassed ? "KYC Submitted" : "KYC Failed",
-        allPassed ? "Your KYC passed automatic checks and is pending admin review." : "Your name, PAN, or Aadhaar did not match our dummy identity records.",
+        canReview ? "KYC Submitted" : "KYC Failed",
+        canReview
+          ? "Your KYC passed automatic checks and is pending admin review."
+          : "Your name, PAN, or Aadhaar did not match our dummy identity records.",
         "kyc"
       );
-      await audit(req, "KYC_SUBMITTED", "kyc", application._id.toString(), { status: application.status, checks });
+      await audit(req, "KYC_SUBMITTED", "kyc", application._id.toString(), { status: application.status, checks, aiVerification });
     }
-    await publishKycEvent(kafkaTopics.kycSubmitted, application, "KYC_SUBMITTED", { checks }, req.log);
+    await publishKycEvent(kafkaTopics.kycSubmitted, application, "KYC_SUBMITTED", { checks, aiVerification }, req.log);
 
     const responseApplication = {
       ...application.toObject(),
@@ -278,7 +293,8 @@ export async function getKycAdmin(req, res, next) {
           }
         : null,
       documents: await enrichDocumentUrls(application.documents?.map(documentSummary) || []),
-      checks: application.checks
+      checks: application.checks,
+      aiVerification: application.aiVerification
     };
     res.json({ application, user, identity, adminReview });
   } catch (error) {

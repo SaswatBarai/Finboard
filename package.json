@@ -29,7 +29,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm test:services && pnpm test:web",
-    "test:services": "pnpm --filter @finboard/auth-service test && pnpm --filter @finboard/profile-service test && pnpm --filter @finboard/banking-service test && pnpm --filter @finboard/investment-service test && pnpm --filter @finboard/notification-service test && pnpm --filter @finboard/audit-service test && pnpm --filter @finboard/api-gateway test",
+    "test:services": "pnpm --filter @finboard/auth-service test && pnpm --filter @finboard/profile-service test && pnpm --filter @finboard/ocr-service test && pnpm --filter @finboard/banking-service test && pnpm --filter @finboard/investment-service test && pnpm --filter @finboard/notification-service test && pnpm --filter @finboard/audit-service test && pnpm --filter @finboard/api-gateway test",
     "test:web": "pnpm --filter @finboard/customer-web test",
     "test:e2e": "node infrastructure/scripts/e2e-smoke.mjs"
   },

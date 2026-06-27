@@ -39,6 +39,20 @@ const kycApplicationSchema = new mongoose.Schema(
       panOcrMatches: { type: Boolean, default: false },
       aadhaarOcrMatches: { type: Boolean, default: false }
     },
+    aiVerification: {
+      overallScore: { type: Number, default: 0 },
+      recommendation: {
+        type: String,
+        enum: ["approve", "review", "reject", ""],
+        default: ""
+      },
+      fields: { type: mongoose.Schema.Types.Mixed, default: {} },
+      alignments: { type: mongoose.Schema.Types.Mixed, default: {} },
+      summary: { type: String, default: "" },
+      verificationSource: { type: String, default: "" },
+      model: { type: String, default: "" },
+      verifiedAt: Date
+    },
     documents: { type: [uploadedDocumentSchema], default: [] },
     adminRemarks: String,
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

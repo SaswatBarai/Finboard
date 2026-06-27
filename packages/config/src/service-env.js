@@ -21,6 +21,10 @@ export function getServiceEnv(defaults = {}) {
     openRouterModel: process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
     openRouterVisionModel: process.env.OPENROUTER_VISION_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
     mistralApiKey: process.env.MISTRAL_API_KEY,
+    mistralTextModel: process.env.MISTRAL_TEXT_MODEL || "mistral-small-latest",
+    mistralVisionModel: process.env.MISTRAL_VISION_MODEL || "pixtral-12b-latest",
+    mistralOcrModel: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
+    llmMaxTokens: Number(process.env.LLM_MAX_TOKENS || 256),
     twilio: {
       accountSid: process.env.TWILIO_ACCOUNT_SID,
       authToken: process.env.TWILIO_AUTH_TOKEN,

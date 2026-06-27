@@ -6,7 +6,8 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "PORT=4004 nodemon --env-file ../../.env src/server.js",
-    "start": "node --env-file ../../.env src/server.js"
+    "start": "node --env-file ../../.env src/server.js",
+    "test": "node --test src/__tests__/**/*.test.js"
   },
   "dependencies": {
     "@finboard/config": "workspace:*",

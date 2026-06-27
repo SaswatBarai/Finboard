@@ -55,6 +55,152 @@ export function StatusBadge({ status }) {
   );
 }
 
+export function recommendationLabel(recommendation) {
+  const map = {
+    approve: "Recommend Approve",
+    review: "Needs Review",
+    reject: "Recommend Reject"
+  };
+  return map[recommendation] || "Not scored";
+}
+
+export function scoreToneClass(score) {
+  if (score >= 80) {
+    return "border-[var(--positive-deep)]/20 bg-[var(--primary-pale)] text-[var(--positive-deep)]";
+  }
+
+  if (score >= 50) {
+    return "border-[var(--warning)]/30 bg-[var(--warning)]/10 text-[var(--warning-content,#4a3b1c)]";
+  }
+
+  return "border-[var(--negative)]/20 bg-[var(--negative)]/10 text-[var(--negative)]";
+}
+
+export function recommendationBadgeClass(recommendation) {
+  const map = {
+    approve: "border-[var(--positive-deep)]/20 bg-[var(--primary-pale)] text-[var(--positive-deep)]",
+    review: "border-[var(--warning)]/30 bg-[var(--warning)]/10 text-[var(--warning-content,#4a3b1c)]",
+    reject: "border-[var(--negative)]/20 bg-[var(--negative)]/10 text-[var(--negative)]"
+  };
+  return map[recommendation] || "border-foreground/10 bg-secondary text-muted-foreground";
+}
+
+export function formatScore(score) {
+  return typeof score === "number" ? `${score}%` : "N/A";
+}
+
+export function AiVerificationCard({ aiVerification }) {
+  if (!aiVerification) {
+    return (
+      <Card className="finboard-card-sage">
+        <CardHeader>
+          <CardDescription>AI Verification</CardDescription>
+          <CardTitle className="text-base">No AI score available</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            This application was submitted before AI verification was enabled or scoring failed to run.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const fields = [
+    { key: "name", label: "Name" },
+    { key: "panNumber", label: "PAN" },
+    { key: "aadhaarNumber", label: "Aadhaar" }
+  ];
+
+  return (
+    <Card className="finboard-card-sage">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+        <div>
+          <CardDescription>AI Verification</CardDescription>
+          <CardTitle className="text-base">Accuracy Assessment</CardTitle>
+        </div>
+        <Badge variant="outline" className={cn("rounded-full", recommendationBadgeClass(aiVerification.recommendation))}>
+          {recommendationLabel(aiVerification.recommendation)}
+        </Badge>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Overall accuracy</p>
+            <p className={cn("text-4xl font-bold tracking-tight", scoreToneClass(aiVerification.overallScore).split(" ").pop())}>
+              {formatScore(aiVerification.overallScore)}
+            </p>
+          </div>
+          <Badge variant="outline" className="rounded-full">
+            {aiVerification.verificationSource || "unknown"}
+          </Badge>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          {fields.map(({ key, label }) => {
+            const field = aiVerification.fields?.[key] || {};
+            return (
+              <div key={key} className="rounded-2xl border border-foreground/10 bg-card p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{label}</span>
+                  <span className="text-sm text-muted-foreground">{formatScore(field.score)}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      (field.score ?? 0) >= 80
+                        ? "bg-[var(--positive-deep)]"
+                        : (field.score ?? 0) >= 50
+                          ? "bg-[var(--warning)]"
+                          : "bg-[var(--negative)]"
+                    )}
+                    style={{ width: `${Math.max(0, Math.min(100, Number(field.score) || 0))}%` }}
+                  />
+                </div>
+                {field.notes ? <p className="mt-2 text-xs text-muted-foreground">{field.notes}</p> : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-foreground/10 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">User vs identity</span>
+            <p className="font-medium">{formatScore(aiVerification.alignments?.userInputVsIdentity)}</p>
+          </div>
+          <div className="rounded-2xl border border-foreground/10 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">OCR vs identity</span>
+            <p className="font-medium">{formatScore(aiVerification.alignments?.ocrVsIdentity)}</p>
+          </div>
+          <div className="rounded-2xl border border-foreground/10 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Images vs identity</span>
+            <p className="font-medium">{formatScore(aiVerification.alignments?.imagesVsIdentity)}</p>
+          </div>
+        </div>
+
+        {aiVerification.summary ? (
+          <p className="rounded-2xl border border-foreground/10 bg-card p-3 text-sm text-muted-foreground">
+            {aiVerification.summary}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function AiScoreBadge({ score }) {
+  if (typeof score !== "number") {
+    return null;
+  }
+
+  return (
+    <Badge variant="outline" className={cn("rounded-full font-medium", scoreToneClass(score))}>
+      {formatScore(score)}
+    </Badge>
+  );
+}
+
 export function CheckPill({ label, value }) {
   return (
     <Badge
@@ -163,6 +309,7 @@ export function KycReviewPanel({
 }) {
   const isReviewable = isKycReviewable(selected?.application?.status);
   const actionsDisabled = isApproving || isRejecting || !isReviewable;
+  const aiVerification = review?.aiVerification || selected?.application?.aiVerification;
 
   return (
     <Card className="finboard-card">
@@ -205,6 +352,8 @@ export function KycReviewPanel({
               <CheckPill label="PAN OCR" value={review?.checks?.panOcrMatches} />
               <CheckPill label="Aadhaar OCR" value={review?.checks?.aadhaarOcrMatches} />
             </div>
+
+            <AiVerificationCard aiVerification={aiVerification} />
 
             <div className="overflow-x-auto rounded-2xl border border-foreground/10">
               <div className="grid min-w-[640px] grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-3 border-b border-foreground/10 bg-secondary px-3 py-2.5 text-xs font-medium text-muted-foreground">
