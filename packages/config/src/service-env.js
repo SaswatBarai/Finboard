@@ -19,6 +19,7 @@ export function getServiceEnv(defaults = {}) {
     ),
     openRouterApiKey: process.env.OPENROUTER_API_KEY,
     openRouterModel: process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
+    openRouterVisionModel: process.env.OPENROUTER_VISION_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
     mistralApiKey: process.env.MISTRAL_API_KEY,
     twilio: {
       accountSid: process.env.TWILIO_ACCOUNT_SID,
