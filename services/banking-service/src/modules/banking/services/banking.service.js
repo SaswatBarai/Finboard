@@ -4,19 +4,49 @@ import { generateTransactionRef, toDecimal, VERIFICATION_AMOUNT } from "../utils
 
 const REFUND_DELAY_MS = Number(process.env.BANK_VERIFICATION_REFUND_DELAY_MS || 45000);
 
-export async function listSeededAccounts() {
-  return prisma.bankAccount.findMany({
-    where: { role: "CUSTOMER" },
+const demoAccountSelect = {
+  holderName: true,
+  bankName: true,
+  accountNumber: true,
+  ifsc: true,
+  balance: true,
+  avatar: true,
+  status: true
+};
+
+export async function listSeededAccountsForUser({ appUserId, email, phone, name }) {
+  const linked = await prisma.bankAccount.findMany({
+    where: { appUserId, role: "CUSTOMER" },
     orderBy: { accountNumber: "asc" },
-    select: {
-      holderName: true,
-      bankName: true,
-      accountNumber: true,
-      ifsc: true,
-      balance: true,
-      avatar: true,
-      status: true
-    }
+    select: demoAccountSelect
+  });
+
+  if (linked.length > 0) {
+    return linked;
+  }
+
+  const matchConditions = [];
+  if (email) {
+    matchConditions.push({ email: { equals: email.trim(), mode: "insensitive" } });
+  }
+  if (phone) {
+    matchConditions.push({ phone });
+  }
+  if (name) {
+    matchConditions.push({ holderName: { equals: name.trim(), mode: "insensitive" } });
+  }
+
+  if (matchConditions.length === 0) {
+    return [];
+  }
+
+  return prisma.bankAccount.findMany({
+    where: {
+      role: "CUSTOMER",
+      OR: matchConditions
+    },
+    orderBy: { accountNumber: "asc" },
+    select: demoAccountSelect
   });
 }
 
@@ -432,7 +462,13 @@ export async function listTransactions(appUserId, range = "all") {
   return prisma.bankTransaction.findMany({
     where: {
       AND: [
-        { OR: [{ senderId: account.id }, { receiverId: account.id }, { appUserId }] },
+        {
+          OR: [
+            { appUserId },
+            { AND: [{ senderId: account.id }, { type: "DEBIT" }] },
+            { AND: [{ receiverId: account.id }, { type: "CREDIT" }] }
+          ]
+        },
         from ? { createdAt: { gte: from } } : {}
       ]
     },

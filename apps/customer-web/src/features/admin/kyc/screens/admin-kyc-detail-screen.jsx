@@ -57,11 +57,11 @@ export default function AdminKycDetailScreen({ applicationId }) {
   const aadhaarDoc = getDocument(review, "aadhaar");
 
   return (
-    <AdminShell title="KYC Application Review" logo="K">
+    <AdminShell title="Application review">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/admin/dashboard">
+            <Link href="/admin/kyc">
               <ArrowLeft className="size-4" />
               Back to queue
             </Link>

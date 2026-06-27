@@ -62,6 +62,8 @@ SMTP is not configured locally. Password-reset and notification emails log to th
 
 Override any account via env vars: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN2_*`, `RTA_ADMIN_*`, `AMC_ADMIN_*`.
 
+After admin login, the **top navbar** on every `/admin/*` page shows only the modules allowed for that JWT role (e.g. RTA sees KYC + Audit; platform admin sees all five links).
+
 ---
 
 ## Seeded demo customer accounts
@@ -74,6 +76,39 @@ Override any account via env vars: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN2_*`, 
 PAN and Aadhaar come from the KYC identity seed (`pnpm seed:kyc`). Name, PAN, and Aadhaar must match exactly when submitting KYC.
 
 Override via: `DEMO_USER_*`, `DEMO_USER2_*`.
+
+---
+
+## Banking API access (by seeded account)
+
+Use these logins when testing `/api/banking/*` in Swagger (`http://localhost:4000/docs`) or Postman.
+
+| Account | Email | JWT `role` | Customer `/api/banking/*` | Admin `/api/banking/admin/*` |
+|---------|-------|------------|---------------------------|------------------------------|
+| Rahul Sharma | user@finboard.local | `user` | Yes | No |
+| Priya Singh | priya@finboard.local | `user` | Yes | No |
+| KYC Review Admin | admin@finboard.local | `admin` | No | Yes |
+| Operations Admin | ops.admin@finboard.local | `admin` | No | Yes |
+| RTA Records Admin | rta.admin@finboard.local | `rta_admin` | No | No |
+| AMC Scheme Manager | amc.admin@finboard.local | `amc_admin` | No | No |
+
+**Example:** Sign in as `user@finboard.local`, call `GET /api/banking/demo-accounts` → 200. Sign in as `admin@finboard.local`, same endpoint → 403.
+
+---
+
+## Audit trail (in-app)
+
+View KYC compliance history at **http://localhost:3000/admin/audit** after admin login.
+
+| Account | Can view audit? |
+|---------|-----------------|
+| `admin@finboard.local` | Yes |
+| `rta.admin@finboard.local` | Yes |
+| `ops.admin@finboard.local` | Yes |
+| `amc.admin@finboard.local` | No |
+| Retail users (`user@`, `anurag@`) | No |
+
+API: `GET /api/audit/kyc/{kycApplicationId}` with admin or RTA JWT.
 
 ---
 

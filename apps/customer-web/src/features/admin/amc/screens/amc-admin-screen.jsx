@@ -36,7 +36,7 @@ export default function AmcAdminPage() {
   });
 
   return (
-    <AdminShell title="AMC Dashboard" logo="M">
+    <AdminShell title="Scheme operations" description="Asset Management Company">
       <div className="space-y-6">
         <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-card">
           <CardHeader>

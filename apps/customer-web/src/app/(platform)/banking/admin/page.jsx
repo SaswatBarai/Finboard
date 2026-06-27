@@ -1,10 +1,5 @@
-import { ProtectedRoute } from "@/features/auth";
-import { BankingAdminScreen } from "@/features/admin";
+import { redirect } from "next/navigation";
 
-export default function BankingAdminPage() {
-  return (
-    <ProtectedRoute requiredRole={["admin"]}>
-      <BankingAdminScreen />
-    </ProtectedRoute>
-  );
+export default function BankingAdminRedirectPage() {
+  redirect("/admin/banking");
 }

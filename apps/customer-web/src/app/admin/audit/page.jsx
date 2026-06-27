@@ -1,10 +1,10 @@
 import { ProtectedRoute } from "@/features/auth";
-import { AdminHubScreen } from "@/features/admin";
+import { AdminAuditScreen } from "@/features/audit";
 
-export default function AdminDashboardPage() {
+export default function AdminAuditPage() {
   return (
     <ProtectedRoute requiredRole={["admin", "rta_admin"]}>
-      <AdminHubScreen />
+      <AdminAuditScreen />
     </ProtectedRoute>
   );
 }

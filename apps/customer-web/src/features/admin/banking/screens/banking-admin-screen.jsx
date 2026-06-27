@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { toast } from "sonner";
 import { AdminShell, AdminSection } from "@/features/layout";
 import { StatCard } from "@/features/layout";
@@ -36,18 +35,8 @@ export default function BankingAdminPage() {
   const frozenCount = (users.data || []).filter((account) => account.status === "FROZEN").length;
 
   return (
-    <AdminShell title="Banking Admin" logo="B">
+    <AdminShell title="Accounts, balances and controls" description="Admin Core Banking View">
       <div className="space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm text-primary">Admin Core Banking View</p>
-            <h1 className="text-3xl font-bold tracking-tight">Accounts, balances and controls</h1>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/banking">Back to Banking</Link>
-          </Button>
-        </div>
-
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Total bank money" value={rupee(totalMoney)} description="Across seeded accounts" />
           <StatCard label="Accounts" value={users.data?.length || 0} description="Admin and customers" />

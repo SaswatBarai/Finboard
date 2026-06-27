@@ -15,7 +15,7 @@ export default function DashboardGate() {
     }
 
     if (["admin", "rta_admin"].includes(user.role)) {
-      router.replace("/admin/dashboard");
+      router.replace(user.role === "rta_admin" ? "/admin/kyc" : "/admin/dashboard");
       return;
     }
 

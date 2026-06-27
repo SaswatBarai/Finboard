@@ -17,7 +17,8 @@ const identities = [
   ["Kabir Khan",           "KABPK2468K", "777888999009"],
   ["Meera Iyer",           "MEEPI1357I", "888999000112"],
   ["Rohan Verma",          "ROHAN9753V", "999000111220"],
-  ["Pritam Prayash Behera","BNZPM2501F", "444333222551"]
+  ["Pritam Prayash Behera","BNZPM2501F", "444333222551"],
+  ["Anurag Swarnakar", "QMRPS6975K", "634441264716"]
 ];
 
 async function main() {

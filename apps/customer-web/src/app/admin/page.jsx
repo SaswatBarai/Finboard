@@ -24,7 +24,12 @@ export default function AdminIndexPage() {
       return;
     }
 
-    if (["admin", "rta_admin"].includes(user?.role)) {
+    if (user?.role === "rta_admin") {
+      router.replace("/admin/kyc");
+      return;
+    }
+
+    if (user?.role === "admin") {
       router.replace("/admin/dashboard");
       return;
     }

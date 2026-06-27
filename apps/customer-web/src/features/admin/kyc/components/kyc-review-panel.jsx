@@ -393,7 +393,11 @@ export function KycReviewPanel({
               <RawOcrBlock title="Aadhaar OCR Extracted Data" document={aadhaarDoc} />
             </div>
 
-            <AuditTrail resourceType="kyc" resourceId={selected.application._id} />
+            <AuditTrail
+              resourceType="kyc"
+              resourceId={selected.application._id}
+              compact
+            />
 
             <Textarea
               placeholder="Write admin remarks before action"

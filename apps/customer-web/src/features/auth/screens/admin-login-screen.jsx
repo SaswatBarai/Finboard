@@ -30,7 +30,13 @@ export default function AdminLoginPage() {
       const response = await api.post("/auth/admin/signin", form);
       login(response.data);
       toast.success("Admin signed in");
-      router.push(response.data.user.role === "amc_admin" ? "/admin/amc" : "/admin/dashboard");
+      router.push(
+        response.data.user.role === "amc_admin"
+          ? "/admin/amc"
+          : response.data.user.role === "rta_admin"
+            ? "/admin/kyc"
+            : "/admin/dashboard"
+      );
     } catch (error) {
       toast.error(getAuthErrorMessage(error));
     } finally {
@@ -77,9 +83,10 @@ export default function AdminLoginPage() {
 
       <div className="auth-note space-y-2">
         <strong className="block text-sm font-semibold">Seeded demo logins</strong>
+        <p>KYC / Super: admin@finboard.local / Admin@12345 (role: Super Admin)</p>
+        <p>Operations: ops.admin@finboard.local / OpsAdmin@12345 (role: Super Admin → Banking)</p>
         <p>RTA: rta.admin@finboard.local / RtaAdmin@12345</p>
         <p>AMC: amc.admin@finboard.local / AmcAdmin@12345</p>
-        <p>Super: admin@finboard.local / Admin@12345</p>
       </div>
 
       <AuthFooterText>

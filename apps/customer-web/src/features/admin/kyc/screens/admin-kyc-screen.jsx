@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, ExternalLink, UserRound, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, ExternalLink, History, UserRound, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -86,7 +86,7 @@ export default function AdminKycPage() {
   const aadhaarDoc = getDocument(review, "aadhaar");
 
   return (
-    <AdminShell title="Admin Dashboard" logo="A">
+    <AdminShell title="Application queue">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-4">
           <Card className="finboard-card">
@@ -174,6 +174,11 @@ export default function AdminKycPage() {
                             </p>
                           </div>
                         </button>
+                        <Button variant="ghost" size="icon-sm" className="shrink-0 rounded-full" asChild>
+                          <Link href={`/admin/audit?kycId=${item._id}`} aria-label={`View audit for ${item.name}`}>
+                            <History className="size-4" />
+                          </Link>
+                        </Button>
                         <Button variant="ghost" size="icon-sm" className="shrink-0 rounded-full" asChild>
                           <Link href={`/admin/kyc/${item._id}`} aria-label={`Open ${item.name} detail`}>
                             <ExternalLink className="size-4" />

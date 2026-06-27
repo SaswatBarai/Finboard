@@ -142,7 +142,12 @@ tags:
   - name: Notifications
     description: In-app notifications
   - name: Audit
-    description: Admin audit trail
+    description: |
+      Admin compliance audit trail for resource-scoped events (KYC submit, approve, reject).
+
+      **JWT roles:** `admin`, `rta_admin` only.
+
+      **Frontend:** `/admin/audit` (Audit Explorer) and embedded panel on `/admin/kyc`.
 
 security: []
 
@@ -1039,6 +1044,11 @@ paths:
       tags: [Banking]
       summary: Transaction history
       description: |
+        Returns transaction history for the authenticated user's linked bank account only.
+
+        Includes debits sent from the account, credits received into the account, and
+        user-scoped records such as bank verification debits/refunds.
+
         **Required JWT role(s):** `user`
 
         **Allowed personas:** Retail investor only
@@ -1428,6 +1438,14 @@ paths:
     get:
       tags: [Audit]
       summary: Get audit trail for a resource
+      description: |
+        Returns append-only audit entries for a specific resource (e.g. `kyc` + KYC application `_id`).
+
+        **Required JWT role(s):** `admin`, `rta_admin`
+
+        **Denied:** `user`, `amc_admin` → 403
+
+        **Frontend:** View in app at `/admin/audit` or on the KYC review panel.
       operationId: getAuditTrail
       security:
         - bearerAuth: []
