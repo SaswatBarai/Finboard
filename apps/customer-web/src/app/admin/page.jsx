@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getDefaultAdminRoute } from "@/features/admin/config/admin-nav.config";
 import { useAuth } from "@/features/auth/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -19,18 +20,8 @@ export default function AdminIndexPage() {
       return;
     }
 
-    if (user?.role === "amc_admin") {
-      router.replace("/admin/amc");
-      return;
-    }
-
-    if (user?.role === "rta_admin") {
-      router.replace("/admin/kyc");
-      return;
-    }
-
-    if (user?.role === "admin") {
-      router.replace("/admin/dashboard");
+    if (["admin", "rta_admin", "amc_admin"].includes(user?.role)) {
+      router.replace(getDefaultAdminRoute(user.role));
       return;
     }
 

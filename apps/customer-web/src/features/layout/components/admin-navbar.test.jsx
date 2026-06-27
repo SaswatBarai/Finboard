@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/admin/dashboard",
+  usePathname: () => "/admin/kyc",
   useRouter: () => ({ push: vi.fn() })
 }));
 
@@ -49,7 +49,6 @@ describe("AdminNavbar", () => {
 
     const desktopNav = getDesktopNav();
 
-    expect(within(desktopNav).getByRole("link", { name: "Home" })).toBeInTheDocument();
     expect(within(desktopNav).getByRole("link", { name: "KYC Review" })).toBeInTheDocument();
     expect(within(desktopNav).getByRole("link", { name: "Audit" })).toBeInTheDocument();
     expect(within(desktopNav).getByRole("link", { name: "Banking" })).toBeInTheDocument();

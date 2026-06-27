@@ -1,4 +1,4 @@
-import { Building2, History, Home, Landmark, ShieldCheck } from "lucide-react";
+import { Building2, History, Landmark, ShieldCheck } from "lucide-react";
 
 export const ADMIN_ROLE_LABELS = {
   admin: "Platform Admin",
@@ -7,15 +7,6 @@ export const ADMIN_ROLE_LABELS = {
 };
 
 export const ADMIN_NAV_ITEMS = [
-  {
-    id: "home",
-    label: "Home",
-    href: "/admin/dashboard",
-    roles: ["admin"],
-    icon: Home,
-    badge: "Console",
-    description: "Operations workspace overview and quick links to all admin modules."
-  },
   {
     id: "kyc",
     label: "KYC Review",
@@ -62,14 +53,10 @@ export function getAdminNavItemsForRole(role) {
   return ADMIN_NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
 
-export function getHubModulesForRole(role) {
-  return getAdminNavItemsForRole(role).filter((item) => item.id !== "home");
+export function getDefaultAdminRoute(role) {
+  return getAdminNavItemsForRole(role)[0]?.href || "/admin/login";
 }
 
 export function isAdminNavItemActive(pathname, href) {
-  if (href === "/admin/dashboard") {
-    return pathname === href;
-  }
-
   return pathname === href || pathname.startsWith(`${href}/`);
 }

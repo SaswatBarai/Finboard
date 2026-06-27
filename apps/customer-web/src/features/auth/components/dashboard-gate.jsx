@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getDefaultAdminRoute } from "@/features/admin/config/admin-nav.config";
 import { DashboardScreen } from "@/features/dashboard";
 import { useAuth } from "../context/auth-context";
 
@@ -14,13 +15,9 @@ export default function DashboardGate() {
       return;
     }
 
-    if (["admin", "rta_admin"].includes(user.role)) {
-      router.replace(user.role === "rta_admin" ? "/admin/kyc" : "/admin/dashboard");
+    if (["admin", "rta_admin", "amc_admin"].includes(user.role)) {
+      router.replace(getDefaultAdminRoute(user.role));
       return;
-    }
-
-    if (user.role === "amc_admin") {
-      router.replace("/admin/amc");
     }
   }, [user, router]);
 

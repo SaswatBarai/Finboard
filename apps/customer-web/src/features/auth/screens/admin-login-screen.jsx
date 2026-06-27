@@ -2,22 +2,38 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import AuthShell from "../components/auth-shell";
-import { AuthFooterText, AuthLink } from "../components/auth-primitives";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getDefaultAdminRoute } from "@/features/admin/config/admin-nav.config";
 import { api } from "@/lib/api";
 import { getAuthErrorMessage } from "../lib/auth-errors";
 import { useAuth } from "../context/auth-context";
+
+const ADMIN_ROLES = [
+  { value: "rta_admin", label: "RTA Admin — KYC and investor records" },
+  { value: "amc_admin", label: "AMC Admin — schemes, SIPs, AUM" },
+  { value: "admin", label: "Super Admin — all modules" },
+];
 
 export default function AdminLoginPage() {
   const [form, setForm] = useState({ email: "", password: "", adminRole: "rta_admin" });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+
+  const selectedRole =
+    ADMIN_ROLES.find((role) => role.value === form.adminRole) ?? ADMIN_ROLES[0];
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -30,13 +46,7 @@ export default function AdminLoginPage() {
       const response = await api.post("/auth/admin/signin", form);
       login(response.data);
       toast.success("Admin signed in");
-      router.push(
-        response.data.user.role === "amc_admin"
-          ? "/admin/amc"
-          : response.data.user.role === "rta_admin"
-            ? "/admin/kyc"
-            : "/admin/dashboard"
-      );
+      router.push(getDefaultAdminRoute(response.data.user.role));
     } catch (error) {
       toast.error(getAuthErrorMessage(error));
     } finally {
@@ -52,17 +62,36 @@ export default function AdminLoginPage() {
     >
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-2">
-          <Label className="auth-field-label">Admin role</Label>
-          <Select value={form.adminRole} onValueChange={(value) => setForm((current) => ({ ...current, adminRole: value }))}>
-            <SelectTrigger className="h-11 rounded-xl border-foreground/20 bg-card">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rta_admin">RTA Admin - KYC and investor records</SelectItem>
-              <SelectItem value="amc_admin">AMC Admin - schemes, SIPs, AUM</SelectItem>
-              <SelectItem value="admin">Super Admin - all modules</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label htmlFor="admin-role" className="auth-field-label">
+            Admin role
+          </Label>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              id="admin-role"
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-between rounded-xl border-foreground/20 bg-card px-4 text-left text-base font-normal md:text-sm"
+                />
+              }
+            >
+              <span className="truncate">{selectedRole.label}</span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-(--anchor-width)">
+              <DropdownMenuRadioGroup
+                value={form.adminRole}
+                onValueChange={(value) => setForm((current) => ({ ...current, adminRole: value }))}
+              >
+                {ADMIN_ROLES.map((role) => (
+                  <DropdownMenuRadioItem key={role.value} value={role.value} closeOnClick>
+                    {role.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="space-y-2">
           <Label htmlFor="email" className="auth-field-label">
@@ -80,18 +109,6 @@ export default function AdminLoginPage() {
           {loading ? "Checking..." : "Open admin dashboard"}
         </Button>
       </form>
-
-      <div className="auth-note space-y-2">
-        <strong className="block text-sm font-semibold">Seeded demo logins</strong>
-        <p>KYC / Super: admin@finboard.local / Admin@12345 (role: Super Admin)</p>
-        <p>Operations: ops.admin@finboard.local / OpsAdmin@12345 (role: Super Admin → Banking)</p>
-        <p>RTA: rta.admin@finboard.local / RtaAdmin@12345</p>
-        <p>AMC: amc.admin@finboard.local / AmcAdmin@12345</p>
-      </div>
-
-      <AuthFooterText>
-        Customer login? <AuthLink href="/signin">Go to sign in</AuthLink>
-      </AuthFooterText>
     </AuthShell>
   );
 }
