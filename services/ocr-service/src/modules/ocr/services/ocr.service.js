@@ -40,12 +40,36 @@ function parseFallback(text, type) {
     : { aadhaarNumber: aadhaarNumber || "", name: name || "" };
 }
 
+function isValidName(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return parts.length >= 2 && parts.every((part) => part.length >= 2) && parts.join(" ").length >= 5;
+}
+
 function hasExtractedFields(extracted, type) {
   if (type === "pan") {
-    return Boolean(extracted.panNumber);
+    return extracted.panNumber?.length === 10 && isValidName(extracted.name);
   }
 
-  return Boolean(extracted.aadhaarNumber);
+  return extracted.aadhaarNumber?.length === 12 && isValidName(extracted.name);
+}
+
+function mergeExtracted(primary, secondary, type) {
+  if (type === "pan") {
+    return {
+      name: isValidName(primary.name) ? primary.name : secondary.name || primary.name,
+      panNumber: primary.panNumber?.length === 10 ? primary.panNumber : secondary.panNumber || primary.panNumber
+    };
+  }
+
+  return {
+    name: isValidName(primary.name) ? primary.name : secondary.name || primary.name,
+    aadhaarNumber:
+      primary.aadhaarNumber?.length === 12 ? primary.aadhaarNumber : secondary.aadhaarNumber || primary.aadhaarNumber
+  };
 }
 
 function mimeTypeForPath(filePath) {
@@ -147,7 +171,7 @@ async function extractWithOpenRouterVision(filePath, type) {
   const prompt =
     type === "pan"
       ? "Read this Indian PAN card image and extract the card holder name and PAN number."
-      : "Read this Indian Aadhaar card image and extract the holder name and 12-digit Aadhaar number.";
+      : "Read this Indian Aadhaar document image and extract the holder full name and 12-digit Aadhaar number (digits only, no spaces).";
 
   try {
     const content = await callOpenRouter(env.openRouterVisionModel, [
@@ -192,9 +216,9 @@ export async function processDocument(filePath, type) {
 
     if (env.openRouterApiKey && !hasExtractedFields(extracted, type)) {
       const visionExtracted = await extractWithOpenRouterVision(filePath, type);
+      extracted = mergeExtracted(visionExtracted, extracted, type);
 
-      if (hasExtractedFields(visionExtracted, type)) {
-        extracted = visionExtracted;
+      if (hasExtractedFields(extracted, type)) {
         extractionSource = "openrouter_vision";
       }
     }
