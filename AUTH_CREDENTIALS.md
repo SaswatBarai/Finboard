@@ -72,8 +72,11 @@ After admin login, the **top navbar** on every `/admin/*` page shows only the mo
 |------|-------|----------|-------|-----|---------|------|
 | Rahul Sharma | `user@finboard.local` | `User@12345` | `+919876543210` | `ABCPS1234F` | `111222333445` | `user` |
 | Priya Singh | `priya@finboard.local` | `User@12345` | `+919876543211` | `PQRPS6789K` | `222333444555` | `user` |
+| Anurag Swarnakar | `anurag@finboard.local` | `User@12345` | `+919348404335` | `QMRPS6975K` | `634441264716` | `user` |
 
 PAN and Aadhaar come from the KYC identity seed (`pnpm seed:kyc`). Name, PAN, and Aadhaar must match exactly when submitting KYC.
+
+Anurag is in the KYC identity and banking seeds (demo account `100000000012`). Register at `/signup` if the auth account does not exist yet.
 
 Override via: `DEMO_USER_*`, `DEMO_USER2_*`.
 
@@ -87,6 +90,7 @@ Use these logins when testing `/api/banking/*` in Swagger (`http://localhost:400
 |---------|-------|------------|---------------------------|------------------------------|
 | Rahul Sharma | user@finboard.local | `user` | Yes | No |
 | Priya Singh | priya@finboard.local | `user` | Yes | No |
+| Anurag Swarnakar | anurag@finboard.local | `user` | Yes (account `100000000012`) | No |
 | KYC Review Admin | admin@finboard.local | `admin` | No | Yes |
 | Operations Admin | ops.admin@finboard.local | `admin` | No | Yes |
 | RTA Records Admin | rta.admin@finboard.local | `rta_admin` | No | No |
@@ -106,7 +110,7 @@ View KYC compliance history at **http://localhost:3000/admin/audit** after admin
 | `rta.admin@finboard.local` | Yes |
 | `ops.admin@finboard.local` | Yes |
 | `amc.admin@finboard.local` | No |
-| Retail users (`user@`, `anurag@`) | No |
+| Retail users (`user@`, `priya@`, `anurag@`) | No |
 
 API: `GET /api/audit/kyc/{kycApplicationId}` with admin or RTA JWT.
 
@@ -132,6 +136,16 @@ Password: User@12345
 Phone:    +919876543211
 PAN:      PQRPS6789K
 Aadhaar:  222333444555
+```
+
+**Customer app — Anurag Swarnakar**
+
+```
+Email:    anurag@finboard.local
+Password: User@12345
+Phone:    +919348404335
+PAN:      QMRPS6975K
+Aadhaar:  634441264716
 ```
 
 **Admin (KYC review)**

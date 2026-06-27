@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { kycSteps } from "../data/content";
@@ -99,19 +99,10 @@ export default function HeroSection() {
   const reduce = useReducedMotion();
 
   return (
-    <section className="relative overflow-hidden bg-[var(--fb-canvas-soft)] pt-6 md:pt-10">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(159,232,112,0.18),transparent_42%),radial-gradient(circle_at_80%_0%,rgba(56,200,255,0.08),transparent_35%)]" />
-
-      <div className="relative mx-auto grid max-w-[1200px] gap-12 px-5 pb-20 pt-8 md:px-8 md:pb-28 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16 lg:pb-32">
+    <section className="relative overflow-hidden">
+      <div className="relative mx-auto grid max-w-[1200px] gap-12 px-5 pb-20 pt-2 md:px-8 md:pb-28 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16 lg:pb-32">
         <div>
           <Reveal>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--fb-ink)]/10 bg-white/70 px-3 py-1.5 text-sm text-[var(--fb-body)] backdrop-blur-sm">
-              <ShieldCheck className="size-4 text-[var(--fb-positive-deep)]" aria-hidden />
-              KYC · Banking · Investments — one coherent journey
-            </div>
-          </Reveal>
-
-          <Reveal delay={0.05}>
             <h1 className="max-w-[14ch] text-[clamp(2.75rem,8vw,5.5rem)] font-black leading-[0.92] tracking-[-0.045em] text-[var(--fb-ink)]">
               Onboard
               <span className="block text-[var(--fb-ink-deep)]">investors</span>

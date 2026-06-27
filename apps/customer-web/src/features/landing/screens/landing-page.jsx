@@ -26,23 +26,31 @@ export default function LandingPage() {
       >
         Skip to content
       </a>
-      <LandingNav />
-      <main id="main-content">
-        <HeroSection />
-        <ProblemSection />
-        <PlatformShiftSection />
-        <KycJourneySection />
-        <OcrSection />
-        <BankingSection />
-        <InvestmentSection />
-        <TrustSection />
-        <PlatformPreviewSection />
-        <SecuritySection />
-        <TechSection />
-        <TestimonialsSection />
-        <FaqSection />
-        <CtaSection />
-      </main>
+      <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[min(100vh,960px)] bg-[var(--fb-canvas-soft)]"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(159,232,112,0.18),transparent_42%),radial-gradient(circle_at_80%_0%,rgba(56,200,255,0.08),transparent_35%)]" />
+        </div>
+        <LandingNav />
+        <main id="main-content">
+          <HeroSection />
+          <ProblemSection />
+          <PlatformShiftSection />
+          <KycJourneySection />
+          <OcrSection />
+          <BankingSection />
+          <InvestmentSection />
+          <TrustSection />
+          <PlatformPreviewSection />
+          <SecuritySection />
+          <TechSection />
+          <TestimonialsSection />
+          <FaqSection />
+          <CtaSection />
+        </main>
+      </div>
       <LandingFooter />
     </div>
   );

@@ -41,6 +41,10 @@ const buttonVariants = cva(
   }
 )
 
+function isLinkChild(child) {
+  return React.isValidElement(child) && (child.type === "a" || typeof child.props?.href === "string");
+}
+
 function Button({
   className,
   variant = "default",
@@ -59,6 +63,15 @@ function Button({
     if (!React.isValidElement(child)) {
       throw new Error("Button: asChild requires a single valid React element child.");
     }
+
+    if (isLinkChild(child)) {
+      return React.cloneElement(child, {
+        ...props,
+        "data-slot": "button",
+        className: cn(buttonVariants({ variant, size, className }), child.props.className)
+      });
+    }
+
     resolvedRender = child;
     resolvedChildren = child.props.children;
   }

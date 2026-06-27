@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowUpRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,7 @@ function FinboardMark({ compact = false }) {
           Finboard
         </span>
         {!compact ? (
-          <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--fb-mute)]">
+          <span className="mt-1 hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--fb-mute)] sm:inline">
             KYC · Banking · Invest
           </span>
         ) : null}
@@ -106,7 +106,6 @@ function NavLinkItem({ link, active, onNavigate, onSelect, variant = "desktop" }
 }
 
 export default function LandingNav() {
-  const reduce = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { active, setManualActive } = useActiveSection(navSectionIds);
@@ -121,28 +120,6 @@ export default function LandingNav() {
   return (
     <header data-landing-nav className="sticky top-0 z-50 px-4 pt-3 md:px-6 md:pt-4">
       <div className="mx-auto max-w-[1180px]">
-        <AnimatePresence initial={false}>
-          {!scrolled && !reduce ? (
-            <motion.div
-              key="nav-ribbon"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mb-3 flex items-center justify-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--fb-mute)]">
-                <span className="relative flex size-2" aria-hidden>
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--fb-positive)] opacity-30" />
-                  <span className="relative size-2 rounded-full bg-[var(--fb-positive)]" />
-                </span>
-                Live demo platform
-                <span className="text-[var(--fb-ink)]/20">·</span>
-                Mongo + Postgres
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
         <div
           className={cn(
             "flex items-center justify-between gap-3 transition-all duration-500 ease-out",
@@ -153,10 +130,7 @@ export default function LandingNav() {
         >
           <FinboardMark compact={scrolled} />
 
-          <nav
-            className="absolute left-1/2 hidden -translate-x-1/2 items-center rounded-full border border-[var(--fb-ink)]/8 bg-[var(--fb-canvas-soft)]/80 p-1 lg:flex"
-            aria-label="Primary"
-          >
+          <nav className="hidden flex-1 justify-center gap-1 lg:flex" aria-label="Primary">
             {navLinks.map((link) => (
               <NavLinkItem key={link.id} link={link} active={active} onSelect={setManualActive} />
             ))}
