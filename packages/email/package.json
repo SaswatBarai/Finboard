@@ -1,0 +1,14 @@
+{
+  "name": "@finboard/email",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@finboard/config": "workspace:*",
+    "resend": "^4.8.0"
+  }
+}

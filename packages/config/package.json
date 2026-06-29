@@ -1,0 +1,11 @@
+{
+  "name": "@finboard/config",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "dependencies": {
+    "dotenv": "^16.6.1"
+  }
+}
