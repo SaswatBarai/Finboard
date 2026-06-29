@@ -1,0 +1,13 @@
+{
+  "name": "@finboard/service-kit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "dependencies": {
+    "@finboard/config": "workspace:*",
+    "@finboard/logger": "workspace:*",
+    "@finboard/shared": "workspace:*"
+  }
+}
