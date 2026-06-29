@@ -6,11 +6,11 @@ import { DisplayHeading, Eyebrow, Reveal, SectionInner, SectionShell } from "./p
 
 export default function FaqSection() {
   return (
-    <SectionShell id="faq" tone="soft">
+    <SectionShell id="faq" tone="soft" aria-labelledby="faq-heading">
       <SectionInner className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
         <Reveal className="min-w-0">
           <Eyebrow>FAQ</Eyebrow>
-          <DisplayHeading className="mt-4 text-3xl sm:text-4xl md:text-5xl">
+          <DisplayHeading id="faq-heading" className="mt-4 text-3xl sm:text-4xl md:text-5xl">
             Questions investors ask first.
           </DisplayHeading>
         </Reveal>

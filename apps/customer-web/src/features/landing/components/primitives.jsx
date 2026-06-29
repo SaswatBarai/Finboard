@@ -38,20 +38,21 @@ export function Eyebrow({ children, className }) {
   );
 }
 
-export function DisplayHeading({ children, className, as: Tag = "h2" }) {
+export function DisplayHeading({ children, className, as: Tag = "h2", ...props }) {
   return (
     <Tag
       className={cn(
         "font-black tracking-[-0.04em] text-[var(--fb-ink)] [font-family:var(--font-display)]",
         className
       )}
+      {...props}
     >
       {children}
     </Tag>
   );
 }
 
-export function SectionShell({ id, children, className, tone = "soft" }) {
+export function SectionShell({ id, children, className, tone = "soft", ...props }) {
   const tones = {
     soft: "bg-[var(--fb-canvas-soft)]",
     white: "bg-card",
@@ -60,7 +61,7 @@ export function SectionShell({ id, children, className, tone = "soft" }) {
   };
 
   return (
-    <section id={id} className={cn("relative overflow-hidden", tones[tone], className)}>
+    <section id={id} className={cn("relative overflow-hidden", tones[tone], className)} {...props}>
       {children}
     </section>
   );
