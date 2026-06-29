@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BankRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum AccountStatus {
+  ACTIVE
+  FROZEN
+}
+
+enum TransactionStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+enum TransactionType {
+  DEBIT
+  CREDIT
+}
+
+enum VerificationStatus {
+  VERIFIED
+  INVALID
+  REFUND_PENDING
+  REFUNDED
+}
+
+model BankAccount {
+  id            String             @id @default(cuid())
+  appUserId     String?
+  holderName    String
+  email         String             @unique
+  phone         String
+  bankName      String             @default("Finboard Demo Bank")
+  accountNumber String             @unique
+  ifsc          String
+  balance       Decimal            @db.Decimal(14, 2)
+  role          BankRole           @default(CUSTOMER)
+  status        AccountStatus      @default(ACTIVE)
+  avatar        String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  sent          BankTransaction[]  @relation("SentTransactions")
+  received      BankTransaction[]  @relation("ReceivedTransactions")
+  ledgerEntries LedgerEntry[]
+  notifications BankNotification[]
+  beneficiaries Beneficiary[]      @relation("OwnerBeneficiaries")
+  verifiedFor   BankVerification[] @relation("VerifiedAccount")
+
+  @@index([appUserId])
+  @@index([accountNumber, ifsc])
+}
+
+model Beneficiary {
+  id                 String      @id @default(cuid())
+  appUserId          String
+  beneficiaryAccount String
+  beneficiaryName    String
+  ifsc               String
+  bankAccountId      String?
+  bankAccount        BankAccount? @relation("OwnerBeneficiaries", fields: [bankAccountId], references: [id])
+  createdAt          DateTime    @default(now())
+
+  @@index([appUserId])
+}
+
+model BankTransaction {
+  id                    String            @id @default(cuid())
+  transactionRef        String            @unique
+  senderId              String?
+  receiverId            String?
+  senderAccountNumber   String?
+  receiverAccountNumber String?
+  amount                Decimal           @db.Decimal(14, 2)
+  type                  TransactionType
+  status                TransactionStatus @default(SUCCESS)
+  description           String
+  remarks               String?
+  appUserId             String?
+  createdAt             DateTime          @default(now())
+  sender                BankAccount?      @relation("SentTransactions", fields: [senderId], references: [id])
+  receiver              BankAccount?      @relation("ReceivedTransactions", fields: [receiverId], references: [id])
+  ledgerEntries         LedgerEntry[]
+
+  @@index([appUserId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  accountId     String
+  transactionId String
+  entryType     TransactionType
+  amount        Decimal         @db.Decimal(14, 2)
+  balanceAfter  Decimal         @db.Decimal(14, 2)
+  createdAt     DateTime        @default(now())
+  account       BankAccount     @relation(fields: [accountId], references: [id])
+  transaction   BankTransaction @relation(fields: [transactionId], references: [id])
+
+  @@index([accountId])
+  @@index([transactionId])
+}
+
+model BankNotification {
+  id        String      @id @default(cuid())
+  appUserId String?
+  accountId String?
+  title     String
+  message   String
+  read      Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  account   BankAccount? @relation(fields: [accountId], references: [id])
+
+  @@index([appUserId])
+  @@index([accountId])
+}
+
+model BankVerification {
+  id                 String             @id @default(cuid())
+  appUserId          String
+  accountId          String?
+  accountNumber      String
+  ifsc               String
+  accountHolderName  String
+  status             VerificationStatus
+  debitTransactionId String?
+  refundTransactionId String?
+  refundDueAt        DateTime?
+  refundedAt         DateTime?
+  createdAt          DateTime           @default(now())
+  account            BankAccount?       @relation("VerifiedAccount", fields: [accountId], references: [id])
+
+  @@index([appUserId])
+  @@index([status])
+  @@index([refundDueAt])
+}
