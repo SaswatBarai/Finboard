@@ -1,476 +1,491 @@
-# Finboard KYC Onboarding Platform
+<div align="center">
 
-Finboard is a full-stack fintech simulation for authentication, profile completion, KYC review, dummy core banking, and stock investment flows. It is built for demo and learning purposes only. It does not connect to real banks, UPI, brokers, exchanges, or payment gateways.
+# Finboard
 
-## Features
+**Premium demo fintech platform for investor onboarding, identity verification, core banking simulation, and portfolio management.**
 
-- React/Vite frontend with a Groww-inspired dark investment dashboard.
-- Node.js/Express backend with JWT authentication.
-- MongoDB for authentication, user profile, KYC, admin users, notifications, and investment holdings.
-- PostgreSQL/Supabase with Prisma for isolated dummy banking data.
-- Twilio-compatible OTP flow with local alert OTP fallback for easy demo testing.
-- Bank verification simulation with Rs. 2 debit and automatic refund.
-- KYC submission with PAN/Aadhaar manual fields, document upload, OCR hooks, and admin review.
-- Admin dashboard for reviewing users, uploaded documents, OCR output, KYC status, and approval/rejection.
-- RTA and AMC admin role simulation with seeded logins.
-- Stock and mutual fund marketplace with search, paginated listings, detail pages, buy flow, SIP flow, holdings, orders, and portfolio value.
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
+[![pnpm](https://img.shields.io/badge/pnpm-10-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io)
+[![Turborepo](https://img.shields.io/badge/Turborepo-2-EF4444?style=for-the-badge&logo=turborepo&logoColor=white)](https://turbo.build)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![Kafka](https://img.shields.io/badge/Apache_Kafka-Event_Bus-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white)](https://kafka.apache.org)
 
-## Project Structure
+<br/>
 
-```text
-.
-├── apps/customer-web/          # Next.js frontend
-├── services/                   # Microservices (auth, kyc, banking, …)
-├── packages/                   # shared, contracts, config, …
-├── infrastructure/             # storage, scripts, docker (planned)
-├── docs/
-└── .env.example
+> **Demo & learning project only.** Does not connect to real banks, UPI, brokers, exchanges, or payment gateways.
+
+</div>
+
+---
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph CLIENT["🖥️  Client Layer"]
+        WEB["Next.js 15\ncustomer-web :3000"]
+    end
+
+    subgraph GATEWAY["🔀  API Gateway  :4000"]
+        GW["api-gateway\nRoute · Auth · Rate-limit"]
+    end
+
+    subgraph SERVICES["⚙️  Microservices"]
+        direction LR
+        AUTH["🔐 auth-service\n:4001"]
+        PROFILE["👤 profile-service\n:4002"]
+        KYC["📋 kyc-service\n:4003"]
+        OCR["🔍 ocr-service\n:4004"]
+        BANK["🏦 banking-service\n:4005"]
+        INVEST["📈 investment-service\n:4006"]
+        NOTIFY["🔔 notification-service\n:4007"]
+        AUDIT["📝 audit-service\n:4008"]
+    end
+
+    subgraph PACKAGES["📦  Shared Packages"]
+        direction LR
+        CONTRACTS["contracts"]
+        SHARED["shared"]
+        LOGGER["logger"]
+        ERRORS["errors"]
+        KAFKA_PKG["kafka"]
+        STORAGE_PKG["storage"]
+    end
+
+    subgraph INFRA["🗄️  Infrastructure"]
+        direction LR
+        MONGO[("MongoDB 7\n:27017")]
+        PG[("PostgreSQL 16\n:5432")]
+        MINIO["MinIO S3\n:9000"]
+        KAFKA_SVC["Apache Kafka\n:9092"]
+        ZK["Zookeeper\n:2181"]
+    end
+
+    WEB -->|"HTTPS / REST"| GW
+
+    GW --> AUTH
+    GW --> PROFILE
+    GW --> KYC
+    GW --> BANK
+    GW --> INVEST
+    GW --> NOTIFY
+
+    KYC -->|"OCR job"| OCR
+    BANK --> NOTIFY
+    INVEST --> BANK
+    INVEST --> NOTIFY
+
+    AUTH --> MONGO
+    PROFILE --> MONGO
+    KYC --> MONGO
+    KYC --> MINIO
+    OCR --> MINIO
+    INVEST --> MONGO
+    NOTIFY --> MONGO
+    AUDIT --> MONGO
+    BANK --> PG
+
+    AUTH --> KAFKA_SVC
+    KYC --> KAFKA_SVC
+    INVEST --> KAFKA_SVC
+    AUDIT --> KAFKA_SVC
+    KAFKA_SVC --> ZK
+
+    SERVICES -.->|"workspace:*"| CONTRACTS
+    SERVICES -.->|"workspace:*"| SHARED
+    SERVICES -.->|"workspace:*"| LOGGER
+    SERVICES -.->|"workspace:*"| ERRORS
+
+    style CLIENT fill:#1a1a2e,stroke:#4f46e5,color:#e0e0ff
+    style GATEWAY fill:#16213e,stroke:#0ea5e9,color:#e0f2fe
+    style SERVICES fill:#0f3460,stroke:#22d3ee,color:#cffafe
+    style PACKAGES fill:#1a2744,stroke:#818cf8,color:#e0e7ff
+    style INFRA fill:#14142b,stroke:#a78bfa,color:#ede9fe
 ```
 
-See `docs/architecture/README.md` for the full service map.
+---
+
+## User Flows
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant W as customer-web
+    participant GW as api-gateway
+    participant A as auth-service
+    participant K as kyc-service
+    participant O as ocr-service
+    participant B as banking-service
+    participant I as investment-service
+
+    Note over U,I: 1 · Registration & OTP
+    U->>W: Sign up (name, email, phone, password)
+    W->>GW: POST /api/auth/send-otp
+    GW->>A: forward
+    A-->>W: OTP (logged / emailed via Resend)
+    U->>W: Enter OTP
+    W->>GW: POST /api/auth/verify-otp
+    GW->>A: verify hash
+    A-->>W: JWT
+
+    Note over U,I: 2 · KYC Submission
+    U->>W: Enter PAN + Aadhaar + upload docs
+    W->>GW: POST /api/kyc/submit
+    GW->>K: save application
+    K->>O: trigger OCR job
+    O-->>K: extracted fields
+    K-->>W: pending status
+
+    Note over U,I: 3 · Bank Verification
+    U->>W: Enter account / IFSC
+    W->>GW: POST /api/banking/verify
+    GW->>B: check seeded accounts (PostgreSQL)
+    B->>B: debit ₹2 → auto-refund
+    B-->>W: verified
+
+    Note over U,I: 4 · Invest
+    U->>W: Buy stock / MF / SIP
+    W->>GW: POST /api/investment/order
+    GW->>I: place order
+    I->>B: deduct from bank balance
+    I-->>W: order confirmation + portfolio update
+```
+
+---
+
+## Monorepo Layout
+
+```
+finboard/
+├── apps/
+│   └── customer-web/          # Next.js 15 · React 19 frontend
+├── services/
+│   ├── api-gateway/           # :4000  Central router + auth middleware
+│   ├── auth-service/          # :4001  Users · OTP · JWT · Resend email
+│   ├── profile-service/       # :4002  Profile completion
+│   ├── kyc-service/           # :4003  KYC applications + admin review
+│   ├── ocr-service/           # :4004  Tesseract.js + OpenRouter extraction
+│   ├── banking-service/       # :4005  Core banking sim (PostgreSQL/Prisma)
+│   ├── investment-service/    # :4006  Stocks · MF · SIP · portfolio
+│   ├── notification-service/  # :4007  In-app notifications
+│   └── audit-service/         # :4008  Immutable audit log
+├── packages/
+│   ├── contracts/             # HTTP client stubs (inter-service)
+│   ├── shared/                # Common types & utilities
+│   ├── config/                # Centralised env schema
+│   ├── logger/                # Structured logger
+│   ├── errors/                # Domain error classes
+│   ├── kafka/                 # Kafka producer/consumer helpers
+│   ├── storage/               # MinIO S3 wrapper
+│   ├── email/                 # Resend email client
+│   └── validation/            # Zod schemas
+├── infrastructure/
+│   ├── docker/                # Dockerfiles
+│   └── scripts/               # scaffold-service, e2e-smoke, …
+├── docs/architecture/
+├── docker-compose.yml         # Infra: MongoDB · PostgreSQL · MinIO · Kafka
+├── docker-compose.apps.yml    # Full-stack containers
+└── turbo.json
+```
+
+---
 
 ## Tech Stack
 
-- Frontend: React, Vite, React Router, TanStack Query, Axios, Recharts, Lucide icons.
-- Backend: Node.js, Express, JWT, bcrypt, Zod, Multer, Mongoose.
-- Auth database: MongoDB Atlas or local MongoDB.
-- Banking database: PostgreSQL on Supabase, accessed through Prisma.
-- OTP: Backend-generated OTP with optional Twilio SMS delivery.
-- OCR/KYC hooks: Tesseract.js local OCR and OpenRouter-compatible structured extraction.
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 15, React 19, Tailwind CSS, TanStack Query, Recharts, Lucide |
+| Backend | Node.js 20, Express 5, Zod, JWT, bcrypt, Mongoose, Prisma |
+| Auth | JWT refresh tokens, OTP via **Resend** (email) |
+| Databases | MongoDB 7 (auth/profile/KYC/investments), PostgreSQL 16 (banking) |
+| Object storage | MinIO (S3-compatible) — KYC documents |
+| Event bus | Apache Kafka + Zookeeper |
+| OCR / AI | Tesseract.js (local), OpenRouter API (structured extraction) |
+| Monorepo | pnpm workspaces, Turborepo |
+| Containerisation | Docker Compose |
+
+---
 
 ## Prerequisites
 
-- Node.js 20 or newer.
-- npm.
-- MongoDB Atlas database or local MongoDB.
-- Supabase PostgreSQL project for the banking module.
-- Optional Twilio account if you want SMS delivery.
-- Optional OpenRouter key for structured OCR extraction. Tesseract.js runs locally.
+- **Node.js 20+** and **pnpm 10+**
+- **Docker + Docker Compose** (for local infrastructure)
+- Optionally: an [OpenRouter](https://openrouter.ai) API key for AI-assisted OCR extraction
 
-## First-Time Setup
+---
 
-Install all dependencies:
+## Quick Start
+
+### 1 · Start infrastructure
+
+Spin up MongoDB, PostgreSQL, MinIO, Kafka, and Zookeeper with one command:
 
 ```bash
-npm install
-npm run install:all
+pnpm infra:up
 ```
 
-Create environment files:
+### 2 · Install dependencies
+
+```bash
+pnpm install
+```
+
+### 3 · Configure environment
 
 ```bash
 cp .env.example .env
-cp apps/customer-web/.env.example apps/customer-web/.env
+cp apps/customer-web/.env.example apps/customer-web/.env.local
 ```
 
-Fill the values in `.env` and `apps/customer-web/.env`.
+Edit `.env` — the minimum required variables are marked below.
+
+### 4 · Run database migrations & seeds
+
+```bash
+# PostgreSQL schema + seed banking accounts
+pnpm prisma:migrate
+pnpm seed:banking
+
+# MongoDB seed — dummy identities for KYC demo
+pnpm seed:kyc
+
+# Seed admin users
+pnpm seed:admin
+```
+
+### 5 · Start everything
+
+```bash
+pnpm dev
+```
+
+This starts all nine services and the Next.js frontend concurrently with labelled, colour-coded output.
+
+| App / Service | URL |
+|---|---|
+| Customer web | http://localhost:3000 |
+| API gateway | http://localhost:4000 |
+| Auth service | http://localhost:4001 |
+| Profile service | http://localhost:4002 |
+| KYC service | http://localhost:4003 |
+| OCR service | http://localhost:4004 |
+| Banking service | http://localhost:4005 |
+| Investment service | http://localhost:4006 |
+| Notification service | http://localhost:4007 |
+| Audit service | http://localhost:4008 |
+| MinIO console | http://localhost:9001 |
+
+---
 
 ## Environment Variables
 
-### Backend
-
-Use the repo root `.env` (see `.env.example`). API traffic goes through the gateway at `:4000`.
-
-Twilio/demo OTP:
+### Root `.env` (shared by all services)
 
 ```env
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_API_KEY_SID=
-TWILIO_API_KEY_SECRET=
-TWILIO_VERIFY_SERVICE_SID=
-TWILIO_FROM_PHONE=
-TWILIO_MESSAGING_SERVICE_SID=
-TWILIO_OTP_TTL_MINUTES=5
-TWILIO_DEV_OTP=123456
-TWILIO_SHOW_OTP_IN_RESPONSE=true
-```
+# MongoDB (Docker default)
+MONGODB_URI=mongodb://root:rootpassword@127.0.0.1:27017/finboard?authSource=admin
 
-KYC OCR:
+# PostgreSQL — banking service
+BANK_DATABASE_URL=postgresql://finboard:finboard_pass@127.0.0.1:5432/finboard_banking?sslmode=disable
 
-```env
+# JWT
+JWT_SECRET=your-min-32-char-secret-here
+JWT_EXPIRES_IN=7d
+
+# Internal service auth
+INTERNAL_SERVICE_KEY=dev-internal-key
+
+# Email OTP — Resend (https://resend.com)
+RESEND_API_KEY=re_your_key
+RESEND_FROM=Finboard <onboarding@resend.dev>
+OTP_TTL_MINUTES=5
+
+# MinIO / S3 document storage
+MINIO_ENDPOINT=127.0.0.1
+MINIO_PORT=9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+
+# Kafka
+KAFKA_BROKERS=127.0.0.1:9092
+
+# OCR / AI extraction (optional — Tesseract runs locally without this)
 OPENROUTER_API_KEY=
 OPENROUTER_MODEL=openai/gpt-4o-mini
+
+# Rate limiting (relax for local demo)
+RATE_LIMIT_MAX=5000
+RATE_LIMIT_WINDOW_MS=900000
 ```
 
-Phone OTP uses Twilio in production and the dev fallback (`TWILIO_DEV_OTP=123456`) locally.
+> When `RESEND_API_KEY` is not set, OTPs are printed to the auth-service console — no email account needed for local development.
 
-### Frontend
+### `apps/customer-web/.env.local`
 
 ```env
-VITE_API_URL=http://localhost:4000/api
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-The frontend does not connect directly to the database for app flows. All business actions go through the Node backend.
+---
 
-## Database Setup
+## Seeded Demo Accounts
 
-### MongoDB
+Run `pnpm seed:admin` to create these accounts:
 
-MongoDB stores:
+| Role | Email | Password |
+|---|---|---|
+| Super Admin | `admin@finboard.local` | `Admin@12345` |
+| Ops Admin | `ops.admin@finboard.local` | `OpsAdmin@12345` |
+| RTA Admin | `rta.admin@finboard.local` | `RtaAdmin@12345` |
+| AMC Admin | `amc.admin@finboard.local` | `AmcAdmin@12345` |
 
-- Users and passwords.
-- JWT-backed auth data.
-- User profile details.
-- KYC submissions.
-- Dummy PAN/Aadhaar identity records.
-- App notifications.
-- Investment holdings and orders.
-- Admin users.
+> Change these before sharing the project outside local demo mode.
 
-For MongoDB Compass, use only one valid URI. Do not prepend `mongodb://localhost:27017` before an Atlas URI.
+---
 
-Correct Atlas format:
+## Feature Walkthrough
 
-```text
-mongodb+srv://<username>:<password>@<cluster>/<database>?retryWrites=true&w=majority
-```
+### Customer onboarding
 
-If the password contains special characters, percent-encode them.
+1. **Sign up** → name, email, phone, password
+2. **Verify OTP** → sent via Resend email (printed to console locally)
+3. **Complete profile** → address, occupation, income
+4. **KYC submission** → PAN + Aadhaar details + document upload
+5. **Bank verification** → account number + IFSC → ₹2 debit + auto-refund
+6. **Invest** → stocks, mutual funds, SIP — unlocked after KYC approval
 
-### PostgreSQL/Supabase Banking DB
+### KYC & OCR pipeline
 
-PostgreSQL stores only banking data:
+- User uploads PAN and Aadhaar images
+- **ocr-service** runs Tesseract.js locally for raw text extraction
+- OpenRouter (optional) extracts structured name / PAN / Aadhaar from the raw text
+- Admin reviews user-entered values, seeded identity match, OCR output, and uploaded documents side-by-side
+- Approve or reject with a single action
 
-- Seeded bank accounts.
-- Bank verification records.
-- Beneficiaries.
-- Bank transactions.
-- Ledger entries.
-- Banking notifications.
+### Banking simulation (PostgreSQL)
 
-Run Prisma commands from the project root:
+- Ten seeded dummy bank accounts (run `pnpm seed:banking`)
+- Penny-drop verification: ₹2 debit → automatic refund after a short delay
+- Beneficiary management, fund transfers, transaction history, banking notifications
+
+### Investment simulation
+
+- Searchable stock and mutual fund marketplace
+- Buy stocks, place lump-sum MF orders, create SIP mandates
+- Deducts from linked bank balance; updates portfolio and holdings
+- AMC admin can review fund/SIP order books and update order status
+
+### Admin dashboard
+
+| Admin role | Access |
+|---|---|
+| **RTA Admin** | KYC queue, OCR review, document preview, approve/reject |
+| **AMC Admin** | Fund order book, SIP book, AUM, scheme analytics |
+| **Super Admin** | Both modules |
+
+---
+
+## Available Scripts
 
 ```bash
-npm run prisma:generate --prefix backend
-npm run prisma:migrate --prefix backend
-npm run prisma:seed --prefix backend
+# Development
+pnpm dev                  # Start all services + frontend
+pnpm dev:web              # Next.js frontend only
+
+# Infrastructure
+pnpm infra:up             # Start Docker services (MongoDB, Postgres, MinIO, Kafka)
+pnpm infra:down           # Stop Docker services
+pnpm infra:apps:up        # Full stack in Docker (services + frontend)
+pnpm infra:logs           # Tail Docker logs
+
+# Database
+pnpm prisma:migrate       # Deploy PostgreSQL migrations
+pnpm prisma:migrate:dev   # Generate + apply new migration
+pnpm prisma:generate      # Regenerate Prisma client
+pnpm prisma:studio        # Open Prisma Studio
+pnpm seed:banking         # Seed 10 dummy bank accounts
+pnpm seed:kyc             # Seed dummy PAN/Aadhaar identity records
+pnpm seed:admin           # Seed admin users
+
+# Quality
+pnpm lint                 # ESLint across all packages
+pnpm format               # Prettier write
+pnpm test                 # Run all service + web tests
+pnpm test:e2e             # End-to-end smoke tests
 ```
 
-The seed creates one admin bank account and ten dummy customer accounts.
-
-## Seed Data
-
-Seed KYC dummy identities:
-
-```bash
-npm run seed:kyc --prefix backend
-```
-
-Seed admin users:
-
-```bash
-npm run seed:admin --prefix backend
-```
-
-Default admin accounts:
-
-```text
-Email: admin@finboard.local
-Password: Admin@12345
-
-Email: ops.admin@finboard.local
-Password: OpsAdmin@12345
-
-Email: rta.admin@finboard.local
-Password: RtaAdmin@12345
-Role: RTA Admin
-
-Email: amc.admin@finboard.local
-Password: AmcAdmin@12345
-Role: AMC Admin
-```
-
-Change these before using the project outside local demo mode.
-
-## Running the App
-
-Run backend and frontend together:
-
-```bash
-npm run dev
-```
-
-Run separately:
-
-```bash
-npm run dev:backend
-npm run dev:frontend
-```
-
-Default URLs:
-
-```text
-Backend:  http://localhost:4000
-Frontend: http://localhost:5173
-```
-
-If Vite starts on `5174`, keep that origin in `CLIENT_ORIGIN`.
-
-## Main User Flow
-
-1. Open the frontend.
-2. Sign up with name, email, phone, password.
-3. Click `Send OTP`.
-4. The backend generates an OTP, stores a hash, optionally sends SMS with Twilio, and returns the OTP in development.
-5. The frontend shows the OTP in an alert box and auto-fills it.
-6. Click `Verify`.
-7. Complete bank details using one seeded dummy bank account.
-8. The backend verifies the account against PostgreSQL, debits Rs. 2, and refunds it automatically after a short demo delay.
-9. Complete KYC by entering PAN/Aadhaar details and uploading documents.
-10. Admin reviews and approves/rejects KYC.
-11. After KYC approval and bank verification, user can buy simulated stocks.
-
-## OTP Behavior
-
-The current OTP flow is demo-friendly:
-
-- Backend generates the OTP.
-- Backend stores only the hash and expiry.
-- Frontend displays the OTP in an alert when `TWILIO_SHOW_OTP_IN_RESPONSE=true`.
-- Twilio SMS is attempted if sender configuration is available.
-- If Twilio trial restrictions block SMS, the alert OTP still works.
-
-Useful endpoints:
-
-```text
-POST /api/auth/send-otp
-POST /api/auth/verify-otp
-POST /api/auth/signup
-POST /api/auth/email-login
-```
-
-PowerShell test:
-
-```powershell
-Invoke-RestMethod `
-  -Uri "http://localhost:4000/api/auth/send-otp" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"user@finboard.local"}'
-```
-
-```powershell
-Invoke-RestMethod `
-  -Uri "http://localhost:4000/api/auth/verify-otp" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"user@finboard.local","otp":"123456"}'
-```
-
-## KYC Flow
-
-User KYC includes:
-
-- Full name.
-- PAN number.
-- Aadhaar number.
-- PAN card upload.
-- Aadhaar card upload.
-
-The backend checks whether the entered PAN/Aadhaar/name exists in the dummy identity dataset. Uploaded PAN and Aadhaar images are read with Tesseract.js, then the raw OCR text is sent to OpenRouter to extract clean name, PAN number, and Aadhaar number fields. Raw OCR text and structured extracted values are stored with the KYC application and shown in the admin dashboard. The admin can approve or reject the submission after reviewing user-entered values, database values, OCR values, and uploaded documents.
-
-KYC routes:
-
-```text
-POST /api/kyc/submit
-GET  /api/kyc/status
-GET  /api/kyc/admin/applications
-PATCH /api/kyc/admin/applications/:id/review
-```
-
-## Banking Flow
-
-Banking is intentionally isolated in PostgreSQL. It simulates a core banking system and does not use real bank APIs.
-
-User can:
-
-- Verify bank account details.
-- View linked account and balance.
-- Send money to seeded accounts.
-- View transaction history.
-- View banking notifications.
-
-Bank verification:
-
-1. User enters account holder name, account number, and IFSC.
-2. Backend checks the seeded PostgreSQL bank accounts.
-3. If found, Rs. 2 is debited as a verification debit.
-4. A notification is created.
-5. Refund job credits Rs. 2 back after the demo delay.
-
-## Investment Flow
-
-Investment simulation includes:
-
-- Stock and mutual fund marketplace dashboard.
-- Searchable instruments.
-- Paginated stock and fund lists.
-- Stock and fund detail pages with history, performance, facts, and order panel.
-- Stock buy panel.
-- Mutual fund lump-sum order panel.
-- SIP creation with monthly amount, SIP date, folio number, and next debit date.
-- Portfolio and holdings.
-- Orders/transactions.
-
-Buying a stock requires:
-
-- User is authenticated.
-- Bank account is verified.
-- KYC status is approved.
-- Bank balance is sufficient.
-
-When a buy succeeds:
-
-- Money is deducted from the linked dummy bank account.
-- Stock orders route toward a simulated listed-company treasury account.
-- Mutual fund and SIP orders route toward a simulated AMC collection account.
-- Holding/order is stored in MongoDB.
-- Portfolio value updates.
-- Notification is created.
-
-AMC admin can review fund and SIP orders and update order status.
-
-## Admin Dashboard
-
-Admin login:
-
-```text
-http://localhost:5173/signin
-```
-
-Use an admin account. Admin users are redirected to:
-
-```text
-/admin/dashboard
-```
-
-Admin login includes a role selector:
-
-- RTA Admin: KYC, OCR review, investor record management.
-- AMC Admin: fund order book, SIP book, AUM, scheme analytics.
-- Super Admin: can access both admin modules.
-
-RTA dashboard includes:
-
-- Admin profile summary.
-- User/KYC application list.
-- Pending, approved, rejected, failed status.
-- Review panel.
-- Uploaded PAN/Aadhaar document preview links.
-- OCR extracted text.
-- Approve/reject actions.
-
-AMC dashboard includes:
-
-- Total AUM.
-- Monthly SIP book.
-- Investor count.
-- Pending fund orders.
-- Mutual fund and SIP order review.
-- Investor stock activity visibility.
-
-## Useful Scripts
-
-Root:
-
-```bash
-npm run install:all
-npm run dev
-npm run dev:backend
-npm run dev:frontend
-```
-
-Backend:
-
-```bash
-npm run check --prefix backend
-npm run prisma:generate --prefix backend
-npm run prisma:migrate --prefix backend
-npm run prisma:seed --prefix backend
-npm run seed:kyc --prefix backend
-npm run seed:admin --prefix backend
-```
-
-Frontend:
-
-```bash
-npm run build --prefix frontend
-npm run preview --prefix frontend
-```
+---
 
 ## Troubleshooting
 
-### Request failed with status code 429
+### `429 Too Many Requests` on local testing
 
-The backend rate limiter was hit. For local demo mode, use:
+The gateway rate limiter is active. Set these in `.env` and restart:
 
 ```env
 RATE_LIMIT_MAX=5000
 RATE_LIMIT_WINDOW_MS=900000
 ```
 
-Restart the backend after changing this because old counters live inside the running process.
+### CORS error from `127.0.0.1` or port `3001`
 
-### CORS error from `127.0.0.1` or port `5174`
-
-Add the exact frontend origin to `CLIENT_ORIGIN`:
+Add the exact origin to `CLIENT_ORIGIN` in `.env`:
 
 ```env
-CLIENT_ORIGIN=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
+CLIENT_ORIGIN=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001
 ```
 
-Restart the backend.
+### OTP email not arriving
 
-### MongoDB Compass says password has unescaped characters
+When `RESEND_API_KEY` is absent, OTPs log to the **auth-service** console:
 
-Use only one connection string and percent-encode special characters. Do not combine local and Atlas URIs.
+```
+[DEV] Email OTP for user@example.com → 847291
+```
 
-### MongoDB connection fails
+### KYC submit returns "identity not found"
 
-Check:
-
-- Atlas database user exists.
-- Password is correct.
-- Current IP is allowed in Atlas Network Access.
-- Database URI has the database name.
-
-### Prisma P1017 or connection reset
-
-Supabase may close idle connections. The app handles common reset cases in the refund job, but if commands fail:
-
-- Check `BANK_DATABASE_URL`.
-- Ensure `sslmode=require`.
-- Re-run `npm run prisma:generate --prefix backend`.
-- Restart backend.
-
-### Twilio SMS does not arrive
-
-Twilio trial accounts usually send only to verified phone numbers. This app still works because backend returns the generated OTP in development and the frontend shows it in an alert.
-
-### KYC submit says failed
-
-For the demo dataset, entered name, PAN, and Aadhaar must match a seeded dummy identity. Run:
+The entered name, PAN, and Aadhaar must match a seeded record. Re-run the seed and use those values:
 
 ```bash
-npm run seed:kyc --prefix backend
+pnpm seed:kyc
 ```
 
-Then submit values from the seeded records.
+### Prisma `P1017` or connection reset
 
-## Verification
-
-Before presenting the demo:
+Postgres may have closed the idle connection. Re-run:
 
 ```bash
-npm run check --prefix backend
-npm run build --prefix frontend
+pnpm prisma:generate
 ```
 
-Both commands should complete successfully.
+Then restart the banking-service.
+
+### MongoDB connection fails (Atlas)
+
+- Confirm the database user exists and the password has no unencoded special characters (percent-encode them).
+- Check Atlas Network Access → your current IP must be allowed.
+- Use exactly one URI; do not prepend `mongodb://localhost` before an Atlas URI.
+
+---
 
 ## Security Notes
 
-This is a simulation project. Do not commit real secrets, private keys, database passwords, Twilio tokens, or API keys. Rotate any credentials that were shared publicly or stored in screenshots. In production, never return OTP values to the frontend.
+This is a **simulation project** for demo and learning purposes.
+
+- Do not commit real secrets, API keys, or database passwords.
+- Rotate any credentials that were shared in screenshots or public repositories.
+- The OTP endpoint returns the generated code in development (`RESEND_API_KEY` absent). Disable this in any exposed environment.
+- Default admin passwords are intentionally weak for demo ease — change them before sharing access.
+
+---
+
+<div align="center">
+
+Built with Node.js · Next.js · MongoDB · PostgreSQL · Kafka · MinIO · Docker
+
+</div>
