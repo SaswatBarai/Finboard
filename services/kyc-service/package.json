@@ -1,0 +1,29 @@
+{
+  "name": "@finboard/kyc-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "PORT=4003 nodemon --env-file ../../.env src/server.js",
+    "start": "node --env-file ../../.env src/server.js"
+  },
+  "dependencies": {
+    "@finboard/config": "workspace:*",
+    "@finboard/contracts": "workspace:*",
+    "@finboard/kafka": "workspace:*",
+    "@finboard/service-kit": "workspace:*",
+    "@finboard/shared": "workspace:*",
+    "@finboard/storage": "workspace:*",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1",
+    "multer": "^2.2.0",
+    "bcryptjs": "^3.0.2",
+    "tesseract.js": "^7.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
