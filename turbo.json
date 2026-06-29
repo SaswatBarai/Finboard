@@ -3,6 +3,8 @@
   "tasks": {
     "dev": { "cache": false, "persistent": true },
     "build": { "dependsOn": ["^build"], "outputs": [".next/**", "dist/**"] },
-    "start": { "cache": false }
+    "start": { "cache": false },
+    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+    "lint": { "dependsOn": ["^build"] }
   }
 }

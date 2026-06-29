@@ -1,0 +1,144 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEPLOY_DIR: /home/ubuntu/finboard
+
+jobs:
+  # ── Job 1: Lint & Test (via Turbo) ─────────────────────────────────────────
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (turbo — all packages in parallel)
+        run: pnpm turbo run lint
+
+      - name: Test (turbo — respects build dependency order)
+        run: pnpm turbo run test
+
+  # ── Job 2: Build check (turbo — ensures workspace builds cleanly) ───────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages and apps (turbo)
+        run: pnpm turbo run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          # Dummy value so Next.js build doesn't fail on missing env
+          API_GATEWAY_URL: http://localhost:4000
+
+  # ── Job 3: Deploy to EC2 ────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 600s
+          script: |
+            set -e
+
+            echo "==> Pulling latest code"
+            cd ${{ env.DEPLOY_DIR }}
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Installing workspace dependencies"
+            pnpm install --frozen-lockfile --prod=false
+
+            echo "==> Running Prisma migrations against Neon DB"
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.apps.yml \
+              -f docker-compose.prod.yml \
+              --env-file .env.production \
+              run --rm --no-deps banking-service \
+              sh -c "cd /app/services/banking-service && DATABASE_URL=\$DATABASE_MIGRATION_URL pnpm exec prisma migrate deploy"
+
+            echo "==> Building and restarting all services (docker compose)"
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.apps.yml \
+              -f docker-compose.prod.yml \
+              --env-file .env.production \
+              up --build -d
+
+            echo "==> Pruning unused Docker images"
+            docker image prune -f
+
+            echo "==> Health check (api-gateway)"
+            sleep 20
+            curl -sf http://localhost:4000/health || (echo "Health check failed" && exit 1)
+
+            echo "==> Health check (customer-web)"
+            curl -sf http://localhost:3000 || (echo "Frontend health check failed" && exit 1)
+
+            echo "==> Deploy complete"
+
+      - name: Notify Slack on success
+        if: success() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST $SLACK_WEBHOOK_URL \
+            -H 'Content-type: application/json' \
+            --data '{"text":"Finboard deployed successfully. Commit: ${{ github.sha }} by ${{ github.actor }}"}'
+
+      - name: Notify Slack on failure
+        if: failure() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST $SLACK_WEBHOOK_URL \
+            -H 'Content-type: application/json' \
+            --data '{"text":"Finboard deployment FAILED. Commit: ${{ github.sha }} — check GitHub Actions logs."}'

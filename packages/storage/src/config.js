@@ -17,5 +17,5 @@ export function getStorageConfig() {
 
 export function isStorageEnabled() {
   const config = getStorageConfig();
-  return Boolean(config.endpoint && config.accessKeyId && config.secretAccessKey);
+  return Boolean(config.accessKeyId && config.secretAccessKey && config.bucket);
 }

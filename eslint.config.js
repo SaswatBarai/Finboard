@@ -2,6 +2,7 @@ import js from "@eslint/js";
 
 export default [
   js.configs.recommended,
+  // ── Base config (all files) ────────────────────────────────────────────────
   {
     languageOptions: {
       ecmaVersion: 2024,
@@ -25,10 +26,48 @@ export default [
       "no-console": "off",
       "prefer-const": "error",
       "no-var": "error",
-      eqeqeq: ["error", "always"],
+      // Allow `!= null` / `== null` — intentional null+undefined guard
+      eqeqeq: ["error", "always", { null: "ignore" }],
       "no-throw-literal": "error"
     }
   },
+  // ── Next.js app — browser globals + JSX ───────────────────────────────────
+  {
+    files: ["apps/customer-web/**/*.{js,jsx,mjs}"],
+    languageOptions: {
+      parserOptions: {
+        ecmaFeatures: { jsx: true }
+      },
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        navigator: "readonly",
+        FormData: "readonly",
+        fetch: "readonly",
+        Event: "readonly",
+        CustomEvent: "readonly",
+        HTMLElement: "readonly",
+        Element: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        localStorage: "readonly",
+        sessionStorage: "readonly",
+        MutationObserver: "readonly",
+        ResizeObserver: "readonly",
+        IntersectionObserver: "readonly"
+      }
+    }
+  },
+  // ── Node scripts — fetch is built-in since Node 18 ────────────────────────
+  {
+    files: ["infrastructure/scripts/**/*.{js,mjs}", "fixtures/**/*.{js,mjs}"],
+    languageOptions: {
+      globals: {
+        fetch: "readonly"
+      }
+    }
+  },
+  // ── Ignores ────────────────────────────────────────────────────────────────
   {
     ignores: [
       "**/node_modules/**",

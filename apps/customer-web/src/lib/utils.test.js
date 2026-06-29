@@ -3,6 +3,7 @@ import { cn } from "./utils";
 
 describe("cn", () => {
   it("merges class names", () => {
-    expect(cn("px-2", "py-1", false && "hidden", "text-sm")).toBe("px-2 py-1 text-sm");
+    const hidden = false;
+    expect(cn("px-2", "py-1", hidden && "hidden", "text-sm")).toBe("px-2 py-1 text-sm");
   });
 });

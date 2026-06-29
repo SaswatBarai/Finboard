@@ -14,8 +14,8 @@ export function createS3Client() {
     const config = getStorageConfig();
     client = new S3Client({
       region: config.region,
-      endpoint: config.endpoint,
-      forcePathStyle: config.forcePathStyle,
+      // endpoint is only set for MinIO / S3-compatible services; omit for native AWS S3
+      ...(config.endpoint ? { endpoint: config.endpoint, forcePathStyle: config.forcePathStyle } : {}),
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey

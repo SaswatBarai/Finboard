@@ -1,0 +1,147 @@
+# Production overrides for Turborepo monorepo
+# Usage: docker compose -f docker-compose.yml -f docker-compose.apps.yml -f docker-compose.prod.yml --env-file .env.production up -d
+
+# Shared production env applied to every service that uses S3 or Postgres.
+# Overrides the MinIO/local-Postgres values set in docker-compose.apps.yml.
+x-prod-env: &prod-env
+  # Neon DB replaces local Postgres
+  BANK_DATABASE_URL: ${BANK_DATABASE_URL}
+  DATABASE_MIGRATION_URL: ${DATABASE_MIGRATION_URL}
+  # Native AWS S3 replaces MinIO — leave S3_ENDPOINT unset so the SDK uses AWS routing
+  S3_ENDPOINT: ""
+  S3_FORCE_PATH_STYLE: "false"
+  S3_ACCESS_KEY: ${AWS_ACCESS_KEY_ID}
+  S3_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY}
+  S3_REGION: ${AWS_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET}
+  CLIENT_ORIGIN: "https://finboard.saswat.app"
+
+services:
+  # ── Disable local Postgres — using Neon DB ──────────────────────────────
+  postgres:
+    deploy:
+      replicas: 0
+
+  # ── Disable MinIO — using AWS S3 ────────────────────────────────────────
+  minio:
+    deploy:
+      replicas: 0
+
+  minio-init:
+    deploy:
+      replicas: 0
+
+  # ── Disable Kafka UI in production ──────────────────────────────────────
+  kafka-ui:
+    deploy:
+      replicas: 0
+
+  # ── Services — inject prod env overrides + memory limits ────────────────
+  # Memory budget for t3.large (8 GB total):
+  #   kafka 512 + zookeeper 256 + customer-web 512 + api-gateway 512
+  #   + 6 services × ~300 ≈ 7.6 GB — leaves ~400 MB for the OS
+
+  api-gateway:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  auth-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  profile-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  kyc-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  ocr-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  banking-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  investment-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  notification-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  audit-service:
+    restart: always
+    environment:
+      <<: *prod-env
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  customer-web:
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: "https://api-finboard.saswat.app"
+      API_GATEWAY_URL: "http://api-gateway:4000"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  zookeeper:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  kafka:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512m
