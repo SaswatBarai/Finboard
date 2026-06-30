@@ -4,6 +4,8 @@
 # Shared production env applied to every service that uses S3 or Postgres.
 # Overrides the MinIO/local-Postgres values set in docker-compose.apps.yml.
 x-prod-env: &prod-env
+  # MongoDB Atlas replaces local Mongo
+  MONGODB_URI: ${MONGODB_URI}
   # Neon DB replaces local Postgres
   BANK_DATABASE_URL: ${BANK_DATABASE_URL}
   DATABASE_MIGRATION_URL: ${DATABASE_MIGRATION_URL}
