@@ -7,7 +7,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.js"],
-    include: ["src/**/*.test.{js,jsx}"]
+    include: ["src/**/*.test.{js,jsx}"],
+    pool: "forks"
   },
   resolve: {
     alias: {
