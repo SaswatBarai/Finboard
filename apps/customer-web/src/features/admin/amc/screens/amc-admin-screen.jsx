@@ -41,7 +41,7 @@ export default function AmcAdminPage() {
         <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-card">
           <CardHeader>
             <CardDescription>Asset Management Company</CardDescription>
-            <CardTitle className="text-2xl">Scheme operations, SIP book, and investor order control</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">Scheme operations, SIP book, and investor order control</CardTitle>
             <p className="text-sm text-muted-foreground">
               Simulates AMC responsibilities: NAV operations, fund AUM, SIP collection, order approval, and collection-account visibility.
             </p>

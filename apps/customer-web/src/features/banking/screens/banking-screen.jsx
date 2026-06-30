@@ -144,7 +144,7 @@ export default function BankingPage() {
             </div>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Transaction History</CardTitle>
                 <Select value={range} onValueChange={setRange}>
                   <SelectTrigger className="w-40">
@@ -159,30 +159,32 @@ export default function BankingPage() {
                 </Select>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Remarks</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(transactions.data || []).map((txn) => (
-                      <TableRow key={txn.id}>
-                        <TableCell>{new Date(txn.createdAt).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className={txn.type === "CREDIT" ? "text-up" : "text-down"}>{txn.type}</TableCell>
-                        <TableCell>{rupee(txn.amount)}</TableCell>
-                        <TableCell>{txn.type === "CREDIT" ? txn.senderAccountNumber || "-" : txn.receiverAccountNumber || "-"}</TableCell>
-                        <TableCell>{txn.status}</TableCell>
-                        <TableCell>{txn.remarks || txn.description}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="hidden sm:table-cell">Account</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="hidden md:table-cell">Remarks</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {(transactions.data || []).map((txn) => (
+                        <TableRow key={txn.id}>
+                          <TableCell>{new Date(txn.createdAt).toLocaleString("en-IN")}</TableCell>
+                          <TableCell className={txn.type === "CREDIT" ? "text-up" : "text-down"}>{txn.type}</TableCell>
+                          <TableCell>{rupee(txn.amount)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{txn.type === "CREDIT" ? txn.senderAccountNumber || "-" : txn.receiverAccountNumber || "-"}</TableCell>
+                          <TableCell>{txn.status}</TableCell>
+                          <TableCell className="hidden md:table-cell">{txn.remarks || txn.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
                 {!transactions.data?.length ? <p className="py-4 text-sm text-muted-foreground">No transactions yet.</p> : null}
               </CardContent>
             </Card>

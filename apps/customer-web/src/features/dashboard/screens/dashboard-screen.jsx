@@ -307,7 +307,8 @@ export default function DashboardPage() {
                 <CardTitle>{marketKey === "mutual-funds" ? "SIP ideas" : "Top movers today"}</CardTitle>
               </CardHeader>
               <CardContent className="px-0 sm:px-6">
-                <Table>
+                <div className="overflow-x-auto">
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
@@ -353,7 +354,8 @@ export default function DashboardPage() {
                       );
                     })}
                   </TableBody>
-                </Table>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
 

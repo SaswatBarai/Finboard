@@ -47,49 +47,51 @@ export default function BankingAdminPage() {
         <Card>
           <CardContent className="pt-6">
             <AdminSection title="All Accounts">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>IFSC</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(users.data || []).map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="font-medium">{account.holderName}</TableCell>
-                    <TableCell>{account.accountNumber}</TableCell>
-                    <TableCell>{account.ifsc}</TableCell>
-                    <TableCell className="font-semibold">{rupee(account.balance)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          account.status === "FROZEN" &&
-                            "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400"
-                        )}
-                      >
-                        {account.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={account.status === "FROZEN" ? "default" : "outline"}
-                        onClick={() => freeze.mutate({ id: account.id, frozen: account.status !== "FROZEN" })}
-                      >
-                        {account.status === "FROZEN" ? "Unfreeze" : "Freeze"}
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead className="hidden sm:table-cell">IFSC</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {(users.data || []).map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell className="font-medium">{account.holderName}</TableCell>
+                      <TableCell>{account.accountNumber}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{account.ifsc}</TableCell>
+                      <TableCell className="font-semibold">{rupee(account.balance)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            account.status === "FROZEN" &&
+                              "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400"
+                          )}
+                        >
+                          {account.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={account.status === "FROZEN" ? "default" : "outline"}
+                          onClick={() => freeze.mutate({ id: account.id, frozen: account.status !== "FROZEN" })}
+                        >
+                          {account.status === "FROZEN" ? "Unfreeze" : "Freeze"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             </AdminSection>
           </CardContent>
         </Card>
