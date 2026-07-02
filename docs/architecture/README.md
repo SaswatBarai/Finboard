@@ -42,19 +42,21 @@ service-name/
 
 ## Service map
 
-| Service | Port | Domain |
-|---------|------|--------|
-| api-gateway | 4000 | Routing |
-| auth-service | 4001 | Users, OTP, JWT |
-| profile-service | 4002 | User profiles |
-| kyc-service | 4003 | KYC applications |
-| ocr-service | 4004 | Document OCR (decoupled) |
-| banking-service | 4005 | Accounts, transfers |
-| investment-service | 4006 | Buy, SIP orders |
-| notification-service | 4007 | In-app notifications |
-| audit-service | 4008 | Audit logs |
-| identity-service | 4009 | Seeded identity verification |
-| portfolio-service | 4011 | Holdings |
+| Service | Port | Domain | Documentation |
+|---------|------|--------|---------------|
+| api-gateway | 4000 | Routing | [docs/services/api-gateway.md](../services/api-gateway.md) |
+| auth-service | 4001 | Users, OTP, JWT | [docs/services/auth-service.md](../services/auth-service.md) |
+| profile-service | 4002 | User profiles | [docs/services/profile-service.md](../services/profile-service.md) |
+| kyc-service | 4003 | KYC applications | [docs/services/kyc-service.md](../services/kyc-service.md) |
+| ocr-service | 4004 | Document OCR (decoupled) | [docs/services/ocr-service.md](../services/ocr-service.md) |
+| banking-service | 4005 | Accounts, transfers | [docs/services/banking-service.md](../services/banking-service.md) |
+| investment-service | 4006 | Buy, SIP orders | [docs/services/investment-service.md](../services/investment-service.md) |
+| notification-service | 4007 | In-app notifications | [docs/services/notification-service.md](../services/notification-service.md) |
+| audit-service | 4008 | Audit logs | [docs/services/audit-service.md](../services/audit-service.md) |
+| identity-service | 4009 | Seeded identity verification | Planned |
+| portfolio-service | 4011 | Holdings | Planned |
+
+See [docs/services/README.md](../services/README.md) for the full service documentation index.
 
 ## Inter-service calls
 
