@@ -1,5 +1,5 @@
 <div align="center">
-
+ 
 # Finboard
 
 **Premium demo fintech platform for investor onboarding, identity verification, core banking simulation, and portfolio management.**
