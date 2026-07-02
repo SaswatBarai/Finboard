@@ -31,6 +31,7 @@ const accounts = [
   ["Rohan Verma", "rohan.verma@testbank.local", "+919000000010", "100000000010", 25800, "RV"],
   ["Isha Nair", "isha.nair@testbank.local", "+919000000011", "100000000011", 11000, "IN"],
   ["Anurag Swarnakar", "anurag@finboard.local", "+919348404335", "100000000012", 20000, "AS"],
+  ["Biswajit Sahoo", "beingbiswa18@gmail.com", "+918260581859", "100000000013", 35000, "BS"],
 ].map((account) =>
   Array.isArray(account)
     ? {
